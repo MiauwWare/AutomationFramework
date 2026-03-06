@@ -1,5 +1,5 @@
 using System.Numerics;
-using AutomationFramework.Extentions;
+using AutomationFramework.Extensions;
 using AutomationRunner.Scripting;
 
 namespace AutomationRunner.Scripts;

@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices.Swift;
 
-namespace AutomationFramework.Extentions;
+namespace AutomationFramework.Extensions;
 
 public static class Extentions
 {

@@ -4,15 +4,15 @@ using AutomationRunner.Scripting;
 
 namespace AutomationRunner.Scripts;
 
-public sealed class DisenchantingScript1 : IAutomationScript
+public sealed class DisenchantingLaptop1 : IAutomationScript
 {
-    public string Name => "disenchanting-script-1";
+    public string Name => "disenchanting-laptop-1";
 
     public string Description => "Disenchants and opens mailbox";
 
-    private RectangleF DisenchantButtonBounds = new RectangleF(1830, 868, 279, 21); // Example bounds for the "Disenchant" button
+    private RectangleF DisenchantButtonBounds = new RectangleF(659, 597, 225, 14); // Example bounds for the "Disenchant" button
 
-    private RectangleF MailboxBounds = new RectangleF(1298, 932, 282, 20); // Example bounds for the mailbox
+    private RectangleF MailboxBounds = new RectangleF(133, 482, 100, 8); // Example bounds for the mailbox
 
 
     public async Task ExecuteAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
