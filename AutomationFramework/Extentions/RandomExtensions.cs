@@ -2,7 +2,7 @@ using System.Runtime.InteropServices.Swift;
 
 namespace AutomationFramework.Extensions;
 
-public static class Extentions
+public static class RandomExtensions
 {
     public static double NextDouble(this Random random, double min, double max)
         => min + (random.NextDouble() * (max - min));

@@ -95,7 +95,7 @@ public sealed class Keyboard
         CancellationToken cancellationToken = default)
     {
         holdDuration = holdDuration ?? _options.DefaultKeyPressDuration;
-        holdDuration = Duration.ApplyRandomFactor(holdDuration.Value, _options.MinDurationFactor, _options.MaxDurationFactor);
+        holdDuration = TimespanExtensions.ApplyRandomFactor(holdDuration.Value, _options.MinDurationFactor, _options.MaxDurationFactor);
 
         KeyDown(virtualKey);
 

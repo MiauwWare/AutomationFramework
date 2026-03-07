@@ -41,6 +41,12 @@ internal static class Program
         runCommand.SetAction(parseResult =>
         {
             var requestedScriptName = parseResult.GetValue(scriptNameArgument);
+            if (string.IsNullOrWhiteSpace(requestedScriptName))
+            {
+                Console.WriteLine("Script name is required.");
+                return 1;
+            }
+
             return HandleRunCommandAsync(requestedScriptName, configuration, scripts, CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
@@ -137,6 +143,15 @@ internal static class Program
         finally
         {
             Console.CancelKeyPress -= OnCancelKeyPress;
+
+            try
+            {
+                selectedScript.Dispose();
+            }
+            catch (Exception disposeException)
+            {
+                Console.WriteLine($"Warning: script cleanup failed: {disposeException.Message}");
+            }
         }
     }
 

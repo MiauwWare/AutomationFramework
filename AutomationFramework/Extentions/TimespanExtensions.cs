@@ -1,6 +1,6 @@
 namespace AutomationFramework;
 
-public static class Duration
+public static class TimespanExtensions
 {
     /// <summary>
     /// Applies a random factor to the base duration to simulate human-like variability.

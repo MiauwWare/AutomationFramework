@@ -4,55 +4,64 @@ using AutomationRunner.Scripting;
 
 namespace AutomationRunner.Scripts;
 
-public sealed class WristCraftingScript : IAutomationScript
+public sealed class WristCraftingScript : BaseScript
 {
-    public string Name => "wrist-crafting-script";
+    public override string Name => "wrist-crafting-script";
 
-    public string Description => "Crafts items using the wrist crafting method";
+    public override string Description => "Crafts items using the wrist crafting method";
 
-    public async Task ExecuteAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
+
+    private AutomationFramework.Cursor _cursor = new();
+    private Vector2 _tailoringButtonPos = new Vector2(2264, 1309);
+    private Vector2 _createAllPos = new Vector2(897, 913);
+    private Vector2 _closeTailoringButtonPos = new Vector2(1176, 155);
+    private Vector2 _mountButtonPos = new Vector2(1230, 1368);
+    private Vector2 _mailNPCPos = new Vector2(1797, 833);
+    private Vector2 _groupSectionPos = new Vector2(1342, 428);
+    private Vector2 _sendMailButtonPos = new Vector2(1434, 987);
+    private Vector2 _closeMailButtonPos = new Vector2(1753, 424);
+
+
+    protected override Task InitializeAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
     {
-        var tailoringButtonPos = new Vector2(2264, 1309);
-        var createAllPos = new Vector2(897, 913);
-        var closeTailoringButtonPos = new Vector2(1176, 155);
-        var mountButtonPos = new Vector2(1230, 1368);
-        var mailNPCPos = new Vector2(1797, 833);
-        var groupSectionPos = new Vector2(1342, 428);
-        var sendMailButtonPos = new Vector2(1434, 987);
-        var closeMailButtonPos = new Vector2(1753, 424);
+        return Task.CompletedTask;
+    }
 
-
-        var cursor = new AutomationFramework.Cursor(); 
-
+    public override void Dispose()
+    {
         
-        while (true)
+    }
+
+    protected override async Task RunAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
+    {
+        while (cancellationToken.IsCancellationRequested == false)
         {
-            await cursor.MoveToAsync(tailoringButtonPos, cancellationToken: cancellationToken);
-            await cursor.ClickAsync(cancellationToken: cancellationToken);
+            await _cursor.MoveToAsync(_tailoringButtonPos, cancellationToken: cancellationToken);
+            await _cursor.ClickAsync(cancellationToken: cancellationToken);
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-            await cursor.MoveToAsync(createAllPos, cancellationToken: cancellationToken);
-            await cursor.ClickAsync(cancellationToken: cancellationToken);
+            await _cursor.MoveToAsync(_createAllPos, cancellationToken: cancellationToken);
+            await _cursor.ClickAsync(cancellationToken: cancellationToken);
             await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(130, 170)), cancellationToken);
             
             
-            await cursor.MoveToAsync(closeTailoringButtonPos, cancellationToken: cancellationToken);
-            await cursor.ClickAsync(cancellationToken: cancellationToken);
+            await _cursor.MoveToAsync(_closeTailoringButtonPos, cancellationToken: cancellationToken);
+            await _cursor.ClickAsync(cancellationToken: cancellationToken);
             await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-            await cursor.MoveToAsync(mountButtonPos, cancellationToken: cancellationToken);
-            await cursor.ClickAsync(cancellationToken: cancellationToken);
+            await _cursor.MoveToAsync(_mountButtonPos, cancellationToken: cancellationToken);
+            await _cursor.ClickAsync(cancellationToken: cancellationToken);
             await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken);
-            await cursor.MoveToAsync(mailNPCPos, cancellationToken: cancellationToken);
-            await cursor.ClickAsync(AutomationFramework.MouseButton.Right, cancellationToken: cancellationToken);
+            await _cursor.MoveToAsync(_mailNPCPos, cancellationToken: cancellationToken);
+            await _cursor.ClickAsync(AutomationFramework.MouseButton.Right, cancellationToken: cancellationToken);
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-            await cursor.MoveToAsync(groupSectionPos, cancellationToken: cancellationToken);
-            await cursor.ClickAsync(cancellationToken: cancellationToken);
+            await _cursor.MoveToAsync(_groupSectionPos, cancellationToken: cancellationToken);
+            await _cursor.ClickAsync(cancellationToken: cancellationToken);
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-            await cursor.MoveToAsync(sendMailButtonPos, cancellationToken: cancellationToken);
-            await cursor.ClickAsync(cancellationToken: cancellationToken);
+            await _cursor.MoveToAsync(_sendMailButtonPos, cancellationToken: cancellationToken);
+            await _cursor.ClickAsync(cancellationToken: cancellationToken);
             await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(10, 15)), cancellationToken);
-            await cursor.MoveToAsync(closeMailButtonPos, cancellationToken: cancellationToken);
-            await cursor.ClickAsync(cancellationToken: cancellationToken);
-            await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(5, 10)), cancellationToken);           
+            await _cursor.MoveToAsync(_closeMailButtonPos, cancellationToken: cancellationToken);
+            await _cursor.ClickAsync(cancellationToken: cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(5, 10)), cancellationToken);
         }
     }
 }

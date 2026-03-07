@@ -124,7 +124,7 @@ public sealed class Cursor
 		if (!GetCursorPos(out var startPoint))
 			throw new InvalidOperationException("Failed to read the current cursor position.");
 
-		var adjustedDuration = Duration.ApplyRandomFactor(duration, _options.MinSpeedFactor, _options.MaxSpeedFactor);
+		var adjustedDuration = TimespanExtensions.ApplyRandomFactor(duration, _options.MinSpeedFactor, _options.MaxSpeedFactor);
 		var startPos = new Vector2(startPoint.X, startPoint.Y);
 
 		var distance = Vector2.Distance(startPos, targetPos);
@@ -213,7 +213,7 @@ public sealed class Cursor
 		holdDuration ??= _options.DefaultClickHoldDuration;
 
 		// then apply random factor to whatever the hold duration is.
-		holdDuration = Duration.ApplyRandomFactor(holdDuration.Value, _options.MinSpeedFactor, _options.MaxSpeedFactor);
+		holdDuration = TimespanExtensions.ApplyRandomFactor(holdDuration.Value, _options.MinSpeedFactor, _options.MaxSpeedFactor);
 
 		MouseDown(button);
 

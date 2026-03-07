@@ -127,6 +127,19 @@ public sealed class Vision : IDisposable
         screenshot.Save(outputFilePath);
     }
 
+
+    public Mat AcquireTemplate(string templateFileName)
+    {
+        var templateFilePath = Path.Combine(_options.TemplatePath, templateFileName);
+        return VisionTemplateResourceManager.Acquire(templateFilePath);
+    }
+
+    public void ReleaseTemplate(string templateFileName)
+    {
+        var templateFilePath = Path.Combine(_options.TemplatePath, templateFileName);
+        VisionTemplateResourceManager.Release(templateFilePath);
+    }
+
     /// <summary>
     /// Finds the best match for a template image on screen and returns its confidence score.
     /// </summary>
@@ -145,7 +158,15 @@ public sealed class Vision : IDisposable
     /// <exception cref="ArgumentOutOfRangeException">Thrown when confidence is outside [0..1].</exception>
     /// <exception cref="FileNotFoundException">Thrown when the template file does not exist.</exception>
     /// <exception cref="InvalidOperationException">Thrown when template loading fails.</exception>
-    public ImageMatchResult? FindImage(string templateImage, double minConfidence = 0.8, Rectangle? searchRegion = null)
+    public async Task<ImageMatchResult?> FindImageAsync
+    (   
+        string templateImage, 
+        double minConfidence = 0.8, 
+        Rectangle? searchRegion = null, 
+        int attempts = 10,
+        int retryDelayMs = 250,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(templateImage);
@@ -157,9 +178,20 @@ public sealed class Vision : IDisposable
             throw new FileNotFoundException("Template image was not found.", templateImagePath);
         }
 
-        using var templateMat = Cv2.ImRead(templateImagePath, ImreadModes.Color);
-        return FindImage(templateMat, minConfidence, searchRegion);
+        var templateMat = VisionTemplateResourceManager.Acquire(templateImagePath);
+       
+        try
+        {
+            return await FindImageAsync(templateMat, minConfidence, searchRegion, attempts, retryDelayMs, cancellationToken);
+        }
+        finally
+        {
+            VisionTemplateResourceManager.Release(templateImagePath);
+        }
     }
+
+    
+
 
     /// <summary>
     /// Finds the best match for an in-memory bitmap template on screen and returns its confidence score.
@@ -174,27 +206,54 @@ public sealed class Vision : IDisposable
     /// <returns>
     /// The best image match if confidence is at least <paramref name="minConfidence"/>; otherwise null.
     /// </returns>
+    /// 
     /// <exception cref="ObjectDisposedException">Thrown when this instance is disposed.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="templateBitmap"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when inputs are invalid.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when confidence is outside [0..1].</exception>
     /// <exception cref="InvalidOperationException">Thrown when template conversion fails.</exception>
-    public ImageMatchResult? FindImage(Bitmap templateBitmap, double minConfidence = 0.8, Rectangle? searchRegion = null)
+    public async Task<ImageMatchResult?> FindImageAsync
+    (
+        Bitmap templateBitmap,
+        double minConfidence = 0.8, 
+        Rectangle? searchRegion = null, 
+        int attempts = 10,
+        int retryDelayMs = 250,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(templateBitmap);
 
         using var templateMat = ConvertBitmapToMat(templateBitmap);
-        return FindImage(templateMat, minConfidence, searchRegion);
+        return await FindImageAsync(templateMat, minConfidence, searchRegion, attempts, retryDelayMs, cancellationToken);
     }
 
-    private ImageMatchResult? FindImage(Mat templateMat, double minConfidence, Rectangle? searchRegion)
+    public async Task<ImageMatchResult?> FindImageAsync
+    (
+        Mat templateMat,
+        double minConfidence = 0.8, 
+        Rectangle? searchRegion = null, 
+        int attempts = 10,
+        int retryDelayMs = 250,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfDisposed();
 
         if (minConfidence is < 0 or > 1)
         {
             throw new ArgumentOutOfRangeException(nameof(minConfidence), "minConfidence must be between 0 and 1.");
+        }
+
+        if (attempts <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(attempts), "attempts must be greater than zero.");
+        }
+
+        if (retryDelayMs < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(retryDelayMs), "retryDelayMs cannot be negative.");
         }
 
         var region = NormalizeRegion(searchRegion);
@@ -204,40 +263,53 @@ public sealed class Vision : IDisposable
             throw new InvalidOperationException("Template image is empty or could not be decoded.");
         }
 
-        // Convert current screen region and template to OpenCV matrices.
-        using var screenshot = CaptureScreenshot(region);
-        using var searchMat = ConvertBitmapToMat(screenshot);
-
-        if (templateMat.Width > searchMat.Width || templateMat.Height > searchMat.Height)
+        for (var attempt = 1; attempt <= attempts; attempt++)
         {
-            throw new ArgumentException("Template image is larger than the search area.", nameof(templateMat));
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            // Convert current screen region and template to OpenCV matrices.
+            using var screenshot = CaptureScreenshot(region);
+            using var searchMat = ConvertBitmapToMat(screenshot);
+
+            if (templateMat.Width > searchMat.Width || templateMat.Height > searchMat.Height)
+            {
+                throw new ArgumentException("Template image is larger than the search area.", nameof(templateMat));
+            }
+
+            var resultWidth = searchMat.Width - templateMat.Width + 1;
+            var resultHeight = searchMat.Height - templateMat.Height + 1;
+
+            // MatchTemplate produces a score map: one score for each possible template position.
+            using var resultMat = new Mat(resultHeight, resultWidth, MatType.CV_32FC1);
+            Cv2.MatchTemplate(searchMat, templateMat, resultMat, _options.TemplateMatchMode);
+            Cv2.MinMaxLoc(resultMat, out var minValue, out var maxValue, out var minLocation, out var maxLocation);
+
+            // For SqDiff modes, lower is better so we invert to a confidence-like score.
+            var (confidence, location) = IsLowerScoreBetter(_options.TemplateMatchMode)
+                ? (1 - minValue, minLocation)
+                : (maxValue, maxLocation);
+
+            if (confidence >= minConfidence)
+            {
+                var localBounds = new Rectangle(
+                    location.X,
+                    location.Y,
+                    templateMat.Width,
+                    templateMat.Height);
+
+                return new ImageMatchResult(localBounds, confidence, region);
+            }
+
+            if (attempt < attempts && retryDelayMs > 0)
+            {
+                await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
+            }
         }
 
-        var resultWidth = searchMat.Width - templateMat.Width + 1;
-        var resultHeight = searchMat.Height - templateMat.Height + 1;
-
-        // MatchTemplate produces a score map: one score for each possible template position.
-        using var resultMat = new Mat(resultHeight, resultWidth, MatType.CV_32FC1);
-        Cv2.MatchTemplate(searchMat, templateMat, resultMat, _options.TemplateMatchMode);
-        Cv2.MinMaxLoc(resultMat, out var minValue, out var maxValue, out var minLocation, out var maxLocation);
-
-        // For SqDiff modes, lower is better so we invert to a confidence-like score.
-        var (confidence, location) = IsLowerScoreBetter(_options.TemplateMatchMode)
-            ? (1 - minValue, minLocation)
-            : (maxValue, maxLocation);
-
-        if (confidence < minConfidence)
-        {
-            return null;
-        }
-
-        var localBounds = new Rectangle(
-            location.X,
-            location.Y,
-            templateMat.Width,
-            templateMat.Height);
-
-        return new ImageMatchResult(localBounds, confidence, region);
+        return null;
     }
 
     /// <summary>
@@ -275,11 +347,16 @@ public sealed class Vision : IDisposable
     /// <exception cref="ObjectDisposedException">Thrown when this instance is disposed.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="text"/> is invalid.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when confidence is outside [0..1].</exception>
-    public IReadOnlyList<TextMatchResult> FindText(
+    public async Task<IReadOnlyList<TextMatchResult>> FindTextAsync
+    (
         string text,
         double minConfidence = 0.5,
         Rectangle? searchRegion = null,
-        StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        StringComparison comparison = StringComparison.OrdinalIgnoreCase,
+        int attempts = 10,
+        int retryDelayMs = 250,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
@@ -289,13 +366,41 @@ public sealed class Vision : IDisposable
             throw new ArgumentOutOfRangeException(nameof(minConfidence), "minConfidence must be between 0 and 1.");
         }
 
-        var ocrResult = ReadText(searchRegion);
-        var matches = ocrResult.Words
-            .Where(word => word.Confidence >= minConfidence && word.Text.Contains(text, comparison))
-            .Select(word => new TextMatchResult(word.Text, word.Bounds, word.Confidence, word.SearchRegion))
-            .ToList();
+        if (attempts <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(attempts), "attempts must be greater than zero.");
+        }
 
-        return matches;
+        if (retryDelayMs < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(retryDelayMs), "retryDelayMs cannot be negative.");
+        }
+
+        for (var attempt = 1; attempt <= attempts; attempt++)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            var ocrResult = ReadText(searchRegion);
+            var matches = ocrResult.Words
+                .Where(word => word.Confidence >= minConfidence && word.Text.Contains(text, comparison))
+                .Select(word => new TextMatchResult(word.Text, word.Bounds, word.Confidence, word.SearchRegion))
+                .ToList();
+
+            if (matches.Count > 0)
+            {
+                return matches;
+            }
+
+            if (attempt < attempts && retryDelayMs > 0)
+            {
+                await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return Array.Empty<TextMatchResult>();
     }
 
     private IReadOnlyList<OcrWord> ExtractWords(Page page, Rectangle region)

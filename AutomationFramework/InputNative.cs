@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace AutomationFramework;
 
-internal static class InputNative
+public static class InputNative
 {
     private const uint InputMouse = 0;
     private const uint InputKeyboard = 1;
