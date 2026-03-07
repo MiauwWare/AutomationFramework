@@ -166,6 +166,7 @@ public sealed class Vision : IDisposable
         float scaleStep = 0.05f,
         float maxScale = 2.0f,
         float minScale = 0.25f,
+        double colorTolerance = 0.0,
         CancellationToken cancellationToken = default
     )
     {
@@ -183,7 +184,7 @@ public sealed class Vision : IDisposable
        
         try
         {
-            return await FindImageAsync(templateMat, minConfidence, searchRegion, scaleStep, maxScale, minScale, cancellationToken);
+            return await FindImageAsync(templateMat, minConfidence, searchRegion, scaleStep, maxScale, minScale, colorTolerance, cancellationToken);
         }
         finally
         {
@@ -221,6 +222,7 @@ public sealed class Vision : IDisposable
         float scaleStep = 0.05f,
         float maxScale = 2.0f,
         float minScale = 0.25f,
+        double colorTolerance = 0.0,
         CancellationToken cancellationToken = default
     )
     {
@@ -228,7 +230,7 @@ public sealed class Vision : IDisposable
         ArgumentNullException.ThrowIfNull(templateBitmap);
 
         using var templateMat = ConvertBitmapToMat(templateBitmap);
-        return await FindImageAsync(templateMat, minConfidence, searchRegion, scaleStep, maxScale, minScale, cancellationToken);
+        return await FindImageAsync(templateMat, minConfidence, searchRegion, scaleStep, maxScale, minScale, colorTolerance, cancellationToken);
     }
 
     public async Task<ImageMatchResult?> FindImageAsync
@@ -239,6 +241,7 @@ public sealed class Vision : IDisposable
         float scaleStep = 0.05f,
         float maxScale = 2.0f,
         float minScale = 0.25f,
+        double colorTolerance = 0.0,
         CancellationToken cancellationToken = default
     )
     {
@@ -247,6 +250,11 @@ public sealed class Vision : IDisposable
         if (minConfidence is < 0 or > 1)
         {
             throw new ArgumentOutOfRangeException(nameof(minConfidence), "minConfidence must be between 0 and 1.");
+        }
+
+        if (colorTolerance is < 0 or > 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(colorTolerance), "colorTolerance must be between 0 and 1.");
         }
 
         var region = NormalizeRegion(searchRegion);
@@ -269,6 +277,7 @@ public sealed class Vision : IDisposable
         // Single capture pass: test each scale against a resized search image.
         using var screenshot = CaptureScreenshot(region);
         using var searchMat = ConvertBitmapToMat(screenshot);
+        using var templateForMatch = BuildColorTolerantMatchMat(templateMat, colorTolerance);
 
         foreach (var scale in scales)
         {
@@ -302,12 +311,14 @@ public sealed class Vision : IDisposable
                     continue;
                 }
 
-                var resultWidth = scaledSearch.Width - templateMat.Width + 1;
-                var resultHeight = scaledSearch.Height - templateMat.Height + 1;
+                using var searchForMatch = BuildColorTolerantMatchMat(scaledSearch, colorTolerance);
+
+                var resultWidth = searchForMatch.Width - templateForMatch.Width + 1;
+                var resultHeight = searchForMatch.Height - templateForMatch.Height + 1;
 
                 // MatchTemplate produces a score map: one score for each possible template position.
                 using var resultMat = new Mat(resultHeight, resultWidth, MatType.CV_32FC1);
-                Cv2.MatchTemplate(scaledSearch, templateMat, resultMat, _options.TemplateMatchMode);
+                Cv2.MatchTemplate(searchForMatch, templateForMatch, resultMat, _options.TemplateMatchMode);
                 Cv2.MinMaxLoc(resultMat, out var minValue, out var maxValue, out var minLocation, out var maxLocation);
 
                 // For SqDiff modes, lower is better so we invert to a confidence-like score.
@@ -341,6 +352,42 @@ public sealed class Vision : IDisposable
         }
 
         return null;
+    }
+
+    private static Mat BuildColorTolerantMatchMat(Mat source, double colorTolerance)
+    {
+        if (colorTolerance <= 0)
+        {
+            return source.Clone();
+        }
+
+        // Build a luminance-first representation to reduce sensitivity to brightness/contrast changes.
+        using var gray = new Mat();
+        if (source.Channels() == 1)
+        {
+            source.CopyTo(gray);
+        }
+        else
+        {
+            Cv2.CvtColor(source, gray, ColorConversionCodes.BGR2GRAY);
+        }
+
+        using var globalEqualized = new Mat();
+        Cv2.EqualizeHist(gray, globalEqualized);
+
+        using var localEqualized = new Mat();
+        using (var clahe = Cv2.CreateCLAHE(2.0 + (6.0 * colorTolerance), new OpenCvSharp.Size(8, 8)))
+        {
+            clahe.Apply(gray, localEqualized);
+        }
+
+        using var normalized = new Mat();
+        Cv2.AddWeighted(globalEqualized, 1.0 - colorTolerance, localEqualized, colorTolerance, 0, normalized);
+
+        // Keep tolerance as a smooth blend so caller can tune from strict (0.0) to robust (1.0).
+        var output = new Mat();
+        Cv2.AddWeighted(gray, 1.0 - colorTolerance, normalized, colorTolerance, 0, output);
+        return output;
     }
 
     
