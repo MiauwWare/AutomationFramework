@@ -403,14 +403,18 @@ public sealed class Vision : IDisposable
             throw new ArgumentOutOfRangeException(nameof(minScale), "Scale bounds must be positive and minScale <= maxScale.");
         }
 
-        var scales = new List<double> { 1.0 };
-
-        // Expand outward from 1.0 equally in both directions.
-        // Example with interval 0.2: 1.0, 0.8, 1.2, 0.6, 1.4, ...
-        for (double offset = interval; offset <= 1.0; offset += interval)
+        var scales = new List<double>();
+        if (1.0 >= minScale && 1.0 <= maxScale)
         {
-            double below = 1.0 - offset;
-            double above = 1.0 + offset;
+            scales.Add(1.0);
+        }
+
+        // Expand outward from 1.0 equally in both directions until bounds are covered.
+        var maxOffset = Math.Max(1.0 - minScale, maxScale - 1.0);
+        for (double offset = interval; offset <= maxOffset + (interval * 0.5); offset += interval)
+        {
+            var below = 1.0 - offset;
+            var above = 1.0 + offset;
 
             if (below >= minScale)
             {
@@ -423,7 +427,24 @@ public sealed class Vision : IDisposable
             }
         }
 
-        return scales.ToArray();
+        // Remove near-duplicates caused by floating-point stepping while preserving BFS order.
+        var deduped = new List<double>(scales.Count);
+        var seen = new HashSet<long>();
+        foreach (var scale in scales)
+        {
+            if (scale < minScale || scale > maxScale)
+            {
+                continue;
+            }
+
+            var key = (long)Math.Round(scale * 1_000_000);
+            if (seen.Add(key))
+            {
+                deduped.Add(scale);
+            }
+        }
+
+        return deduped.ToArray();
     }
 
 
