@@ -362,6 +362,54 @@ public sealed class Vision : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Finds a template image on screen while automatically handling scale differences.
+    /// This is a simplified wrapper around multi-scale template matching.
+    /// </summary>
+    /// <param name="templateImage">Template file name under the configured template folder.</param>
+    /// <param name="searchRegion">Optional search region; null means full virtual desktop.</param>
+    /// <param name="minConfidence">Minimum confidence threshold in range [0..1].</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The first qualifying match in search order, or null if not found.</returns>
+    public Task<ImageMatchResult?> FindImageScaleInvariantAsync(
+        string templateImage,
+        Rectangle? searchRegion = null,
+        double minConfidence = 0.85,
+        CancellationToken cancellationToken = default)
+    {
+        return FindImageAsync(
+            templateImage,
+            minConfidence,
+            searchRegion,
+            attempts: 6,
+            retryDelayMs: 120,
+            scaleStep: 0.05f,
+            maxScale: 1.6f,
+            minScale: 0.5f,
+            cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Finds an in-memory template on screen while automatically handling scale differences.
+    /// </summary>
+    public Task<ImageMatchResult?> FindImageScaleInvariantAsync(
+        Mat templateMat,
+        Rectangle? searchRegion = null,
+        double minConfidence = 0.85,
+        CancellationToken cancellationToken = default)
+    {
+        return FindImageAsync(
+            templateMat,
+            minConfidence,
+            searchRegion,
+            attempts: 6,
+            retryDelayMs: 120,
+            scaleStep: 0.05f,
+            maxScale: 1.6f,
+            minScale: 0.5f,
+            cancellationToken: cancellationToken);
+    }
+
     private static double[] GenerateScalesInBFSOrder(double minScale = 0.2, double maxScale = 2.0, double interval = 0.2)
     {
         if (interval <= 0)
@@ -408,6 +456,7 @@ public sealed class Vision : IDisposable
     /// <param name="pyramidLevels">Number of image pyramid levels to compare.</param>
     /// <param name="cannyThreshold1">First Canny threshold for edge extraction.</param>
     /// <param name="cannyThreshold2">Second Canny threshold for edge extraction.</param>
+    /// <param name="minPixelCorrelation">Minimum exact template-vs-candidate correlation [0..1].</param>
     /// <param name="minColorCorrelation">Minimum HSV histogram correlation [0..1] for color verification.</param>
     /// <param name="cancellationToken">Cancellation token for cooperative cancel.</param>
     /// <returns>The best edge-based match if confidence qualifies; otherwise null.</returns>
@@ -420,6 +469,10 @@ public sealed class Vision : IDisposable
         int pyramidLevels = 4,
         double cannyThreshold1 = 50,
         double cannyThreshold2 = 150,
+        float scaleStep = 0.05f,
+        float maxScale = 2.0f,
+        float minScale = 0.25f,
+        double minPixelCorrelation = 0.45,
         double minColorCorrelation = 0,
         CancellationToken cancellationToken = default)
     {
@@ -444,6 +497,10 @@ public sealed class Vision : IDisposable
                 pyramidLevels,
                 cannyThreshold1,
                 cannyThreshold2,
+                scaleStep,
+                maxScale,
+                minScale,
+                minPixelCorrelation,
                 minColorCorrelation,
                 cancellationToken);
         }
@@ -464,6 +521,7 @@ public sealed class Vision : IDisposable
     /// <param name="pyramidLevels">Number of image pyramid levels to compare.</param>
     /// <param name="cannyThreshold1">First Canny threshold for edge extraction.</param>
     /// <param name="cannyThreshold2">Second Canny threshold for edge extraction.</param>
+    /// <param name="minPixelCorrelation">Minimum exact template-vs-candidate correlation [0..1].</param>
     /// <param name="minColorCorrelation">Minimum HSV histogram correlation [0..1] for color verification.</param>
     /// <param name="cancellationToken">Cancellation token for cooperative cancel.</param>
     /// <returns>The best edge-based match if confidence qualifies; otherwise null.</returns>
@@ -476,6 +534,10 @@ public sealed class Vision : IDisposable
         int pyramidLevels = 4,
         double cannyThreshold1 = 50,
         double cannyThreshold2 = 150,
+        float scaleStep = 0.05f,
+        float maxScale = 2.0f,
+        float minScale = 0.25f,
+        double minPixelCorrelation = 0.45,
         double minColorCorrelation = 0.0,
         CancellationToken cancellationToken = default)
     {
@@ -492,6 +554,10 @@ public sealed class Vision : IDisposable
             pyramidLevels,
             cannyThreshold1,
             cannyThreshold2,
+            scaleStep,
+            maxScale,
+            minScale,
+            minPixelCorrelation,
             minColorCorrelation,
             cancellationToken);
     }
@@ -507,6 +573,7 @@ public sealed class Vision : IDisposable
     /// <param name="pyramidLevels">Number of image pyramid levels to compare.</param>
     /// <param name="cannyThreshold1">First Canny threshold for edge extraction.</param>
     /// <param name="cannyThreshold2">Second Canny threshold for edge extraction.</param>
+    /// <param name="minPixelCorrelation">Minimum exact template-vs-candidate correlation [0..1].</param>
     /// <param name="minColorCorrelation">Minimum HSV histogram correlation [0..1] for color verification.</param>
     /// <param name="cancellationToken">Cancellation token for cooperative cancel.</param>
     /// <returns>The best edge-based match if confidence qualifies; otherwise null.</returns>
@@ -519,6 +586,10 @@ public sealed class Vision : IDisposable
         int pyramidLevels = 4,
         double cannyThreshold1 = 50,
         double cannyThreshold2 = 150,
+        float scaleStep = 0.05f,
+        float maxScale = 2.0f,
+        float minScale = 0.25f,
+        double minPixelCorrelation = 0.45,
         double minColorCorrelation = 0.0,
         CancellationToken cancellationToken = default)
     {
@@ -549,6 +620,11 @@ public sealed class Vision : IDisposable
             throw new ArgumentOutOfRangeException(nameof(minColorCorrelation), "minColorCorrelation must be between 0 and 1.");
         }
 
+        if (minPixelCorrelation is < 0 or > 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minPixelCorrelation), "minPixelCorrelation must be between 0 and 1.");
+        }
+
         if (templateMat.Empty())
         {
             throw new InvalidOperationException("Template image is empty or could not be decoded.");
@@ -556,109 +632,140 @@ public sealed class Vision : IDisposable
 
         var region = NormalizeRegion(searchRegion);
 
-        // Build template edges once, then construct template pyramid once.
-        // This is reused across attempts to avoid repeated preprocessing.
-        using var templateEdges = BuildEdgeMap(templateMat, cannyThreshold1, cannyThreshold2);
-        var templatePyramid = BuildPyramid(templateEdges, pyramidLevels);
+        // Search scales in BFS order around 1.0 so we test likely scale changes first.
+        var scales = GenerateScalesInBFSOrder(minScale, maxScale, scaleStep);
 
-        try
+        for (var attempt = 1; attempt <= attempts; attempt++)
         {
-            for (var attempt = 1; attempt <= attempts; attempt++)
+            cancellationToken.ThrowIfCancellationRequested();
+
+            using var screenshot = CaptureScreenshot(region);
+            using var searchMat = ConvertBitmapToMat(screenshot);
+            using var searchEdges = BuildEdgeMap(searchMat, cannyThreshold1, cannyThreshold2);
+
+            // Rebuild search pyramid every attempt because screen content may change.
+            var searchPyramid = BuildPyramid(searchEdges, pyramidLevels);
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                using var screenshot = CaptureScreenshot(region);
-                using var searchMat = ConvertBitmapToMat(screenshot);
-                using var searchEdges = BuildEdgeMap(searchMat, cannyThreshold1, cannyThreshold2);
-
-                // Rebuild search pyramid every attempt because screen content may change.
-                var searchPyramid = BuildPyramid(searchEdges, pyramidLevels);
-                try
+                foreach (var scale in scales)
                 {
-                    double bestConfidence = -1;
-                    Rectangle bestBounds = Rectangle.Empty;
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    for (var level = 0; level < pyramidLevels; level++)
+                    Mat scaledTemplate;
+                    if (Math.Abs(scale - 1.0) > 0.001)
                     {
-                        var templateLevel = templatePyramid[level];
-                        var searchLevel = searchPyramid[level];
-
-                        if (templateLevel.Width > searchLevel.Width || templateLevel.Height > searchLevel.Height)
-                        {
-                            continue;
-                        }
-
-                        var resultWidth = searchLevel.Width - templateLevel.Width + 1;
-                        var resultHeight = searchLevel.Height - templateLevel.Height + 1;
-
-                        using var resultMat = new Mat(resultHeight, resultWidth, MatType.CV_32FC1);
-                        Cv2.MatchTemplate(searchLevel, templateLevel, resultMat, _options.TemplateMatchMode);
-                        Cv2.MinMaxLoc(resultMat, out var minValue, out var maxValue, out var minLocation, out var maxLocation);
-
-                        var (confidence, location) = IsLowerScoreBetter(_options.TemplateMatchMode)
-                            ? (1 - minValue, minLocation)
-                            : (maxValue, maxLocation);
-
-                        if (confidence <= bestConfidence)
-                        {
-                            continue;
-                        }
-
-                        // Level N in a pyramid is downsampled by 2^N in each axis,
-                        // so convert local coordinates back to level-0 coordinates.
-                        var scaleFactor = 1 << level;
-                        bestConfidence = confidence;
-                        bestBounds = new Rectangle(
-                            location.X * scaleFactor,
-                            location.Y * scaleFactor,
-                            templateLevel.Width * scaleFactor,
-                            templateLevel.Height * scaleFactor);
+                        scaledTemplate = new Mat();
+                        var scaledWidth = Math.Max(1, (int)(templateMat.Width * scale));
+                        var scaledHeight = Math.Max(1, (int)(templateMat.Height * scale));
+                        Cv2.Resize(templateMat, scaledTemplate, new OpenCvSharp.Size(scaledWidth, scaledHeight), interpolation: InterpolationFlags.Linear);
+                    }
+                    else
+                    {
+                        scaledTemplate = templateMat;
                     }
 
-                    if (bestConfidence >= minConfidence && bestBounds.Width > 0 && bestBounds.Height > 0)
+                    using var scaledTemplateEdges = BuildEdgeMap(scaledTemplate, cannyThreshold1, cannyThreshold2);
+                    var templatePyramid = BuildPyramid(scaledTemplateEdges, pyramidLevels);
+                    try
                     {
-                        // Edge matching is shape-focused; this color verification step rejects
-                        // similarly shaped false positives that differ in color distribution.
-                        var clampedBounds = ClampToImageBounds(bestBounds, searchMat.Width, searchMat.Height);
-                        if (clampedBounds == Rectangle.Empty)
-                        {
-                            continue;
-                        }
+                        double bestConfidence = -1;
+                        Rectangle bestBounds = Rectangle.Empty;
+                        var levelCount = Math.Min(templatePyramid.Count, searchPyramid.Count);
 
-                        // Color verification is optional. Use a positive threshold to enable it.
-                        if (minColorCorrelation > 0)
+                        for (var level = 0; level < levelCount; level++)
                         {
-                            var colorCorrelation = ComputeHsvColorCorrelation(templateMat, searchMat, clampedBounds);
-                            if (colorCorrelation < minColorCorrelation)
+                            var templateLevel = templatePyramid[level];
+                            var searchLevel = searchPyramid[level];
+
+                            if (templateLevel.Width > searchLevel.Width || templateLevel.Height > searchLevel.Height)
                             {
                                 continue;
                             }
+
+                            var resultWidth = searchLevel.Width - templateLevel.Width + 1;
+                            var resultHeight = searchLevel.Height - templateLevel.Height + 1;
+
+                            using var resultMat = new Mat(resultHeight, resultWidth, MatType.CV_32FC1);
+                            Cv2.MatchTemplate(searchLevel, templateLevel, resultMat, _options.TemplateMatchMode);
+                            Cv2.MinMaxLoc(resultMat, out var minValue, out var maxValue, out var minLocation, out var maxLocation);
+
+                            var (confidence, location) = IsLowerScoreBetter(_options.TemplateMatchMode)
+                                ? (1 - minValue, minLocation)
+                                : (maxValue, maxLocation);
+
+                            if (confidence <= bestConfidence)
+                            {
+                                continue;
+                            }
+
+                            // Level N in a pyramid is downsampled by 2^N in each axis,
+                            // so convert local coordinates back to level-0 coordinates.
+                            var levelFactor = 1 << level;
+                            bestConfidence = confidence;
+                            bestBounds = new Rectangle(
+                                location.X * levelFactor,
+                                location.Y * levelFactor,
+                                templateLevel.Width * levelFactor,
+                                templateLevel.Height * levelFactor);
                         }
 
-                        return new ImageMatchResult(clampedBounds, bestConfidence, region);
-                    }
-                }
-                finally
-                {
-                    // Each pyramid level owns unmanaged buffers; release promptly.
-                    foreach (var mat in searchPyramid)
-                    {
-                        mat.Dispose();
-                    }
-                }
+                        if (bestConfidence >= minConfidence && bestBounds.Width > 0 && bestBounds.Height > 0)
+                        {
+                            // Edge matching is shape-focused; this color verification step rejects
+                            // similarly shaped false positives that differ in color distribution.
+                            var clampedBounds = ClampToImageBounds(bestBounds, searchMat.Width, searchMat.Height);
+                            if (clampedBounds == Rectangle.Empty)
+                            {
+                                continue;
+                            }
 
-                if (attempt < attempts && retryDelayMs > 0)
-                {
-                    await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
+                            // Color verification is optional. Use a positive threshold to enable it.
+                            if (minColorCorrelation > 0)
+                            {
+                                var colorCorrelation = ComputeHsvColorCorrelation(scaledTemplate, searchMat, clampedBounds);
+                                if (colorCorrelation < minColorCorrelation)
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // Final pixel-level verification to reject frame-only false positives
+                            // (for example empty action bar slots with similar border edges).
+                            var pixelCorrelation = ComputeTemplateCorrelationAtBounds(scaledTemplate, searchMat, clampedBounds);
+                            if (pixelCorrelation < minPixelCorrelation)
+                            {
+                                continue;
+                            }
+
+                            return new ImageMatchResult(clampedBounds, bestConfidence, region);
+                        }
+                    }
+                    finally
+                    {
+                        foreach (var mat in templatePyramid)
+                        {
+                            mat.Dispose();
+                        }
+
+                        if (Math.Abs(scale - 1.0) > 0.001)
+                        {
+                            scaledTemplate.Dispose();
+                        }
+                    }
                 }
             }
-        }
-        finally
-        {
-            // Template pyramid is shared across attempts and disposed once here.
-            foreach (var mat in templatePyramid)
+            finally
             {
-                mat.Dispose();
+                // Each pyramid level owns unmanaged buffers; release promptly.
+                foreach (var mat in searchPyramid)
+                {
+                    mat.Dispose();
+                }
+            }
+
+            if (attempt < attempts && retryDelayMs > 0)
+            {
+                await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -1026,6 +1133,42 @@ public sealed class Vision : IDisposable
         Cv2.Normalize(searchHist, searchHist, 1, 0, NormTypes.L1);
 
         return Cv2.CompareHist(templateHist, searchHist, HistCompMethods.Correl);
+    }
+
+    private static double ComputeTemplateCorrelationAtBounds(Mat templateMat, Mat searchMat, Rectangle bounds)
+    {
+        using var roi = new Mat(searchMat, new OpenCvSharp.Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+        using var resizedTemplate = new Mat();
+        Cv2.Resize(templateMat, resizedTemplate, new OpenCvSharp.Size(bounds.Width, bounds.Height), interpolation: InterpolationFlags.Linear);
+
+        using var templateBgr = EnsureBgr(resizedTemplate);
+        using var roiBgr = EnsureBgr(roi);
+
+        using var result = new Mat(1, 1, MatType.CV_32FC1);
+        Cv2.MatchTemplate(roiBgr, templateBgr, result, TemplateMatchModes.CCoeffNormed);
+        var correlation = result.At<float>(0, 0);
+
+        if (float.IsNaN(correlation) || float.IsInfinity(correlation))
+        {
+            return -1;
+        }
+
+        return correlation;
+    }
+
+    private static Mat EnsureBgr(Mat source)
+    {
+        var bgr = new Mat();
+        if (source.Channels() == 1)
+        {
+            Cv2.CvtColor(source, bgr, ColorConversionCodes.GRAY2BGR);
+        }
+        else
+        {
+            source.CopyTo(bgr);
+        }
+
+        return bgr;
     }
 
     private void ThrowIfDisposed()

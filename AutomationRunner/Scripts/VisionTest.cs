@@ -67,15 +67,11 @@ public sealed class VisionTest : BaseScript
 
     protected override async Task RunAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
     {
-        var res = await _vision.FindImageByEdgePyramidAsync
-        (
+        var res = await _vision.FindImageScaleInvariantAsync(
             _templates[VisionTemplateFileNames.TailoringButton],
-            minConfidence: 0.80,
-            minColorCorrelation: 0.25,
-            attempts: 5,
             searchRegion: Screen.PrimaryScreen?.Bounds,
-            cancellationToken: cancellationToken
-        );
+            minConfidence: 0.8,
+            cancellationToken: cancellationToken);
 
         if (res == null)
         {
