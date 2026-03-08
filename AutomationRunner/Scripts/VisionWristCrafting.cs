@@ -78,7 +78,7 @@ public sealed class VisionWristCrafting : BaseScript
                 return;
             }
 
-            var tailoringButtonRandomPoint = tailoringButtonImageMatch.ToGlobalBounds().Inset(10).GetRandomPointInBounds();
+            var tailoringButtonRandomPoint = tailoringButtonImageMatch.ToGlobalBounds().Inset(20).GetRandomPointInBounds();
             await _cursor.MoveToAsync(tailoringButtonRandomPoint, cancellationToken: cancellationToken);
             await _cursor.ClickAsync();
 
@@ -99,14 +99,14 @@ public sealed class VisionWristCrafting : BaseScript
             await _cursor.ClickAsync();
 
             // Click TSM craft button
-            var craftButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TsmCraftButton], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var craftButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TsmCraftButton], 0.8, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (craftButtonImageMatch == null)
             {
                 Console.WriteLine("Craft button not found.");
                 return;
             }
 
-            var tsmCraftButtonRandomPoint = craftButtonImageMatch.ToGlobalBounds().Padd(60, 15).GetRandomPointInBounds();
+            var tsmCraftButtonRandomPoint = craftButtonImageMatch.ToGlobalBounds().Padd(30, 5).GetRandomPointInBounds();
             await _cursor.MoveToAsync(tsmCraftButtonRandomPoint, cancellationToken: cancellationToken);
             await _cursor.ClickAsync();
 
@@ -138,7 +138,7 @@ public sealed class VisionWristCrafting : BaseScript
                 return;
             }
 
-            var gildedTradersBrutosaurRandomPoint = gildedTradersBrutosaurImageMatch.ToGlobalBounds().Inset(5).GetRandomPointInBounds();
+            var gildedTradersBrutosaurRandomPoint = gildedTradersBrutosaurImageMatch.ToGlobalBounds().Inset(20).GetRandomPointInBounds();
             await _cursor.MoveToAsync(gildedTradersBrutosaurRandomPoint, cancellationToken: cancellationToken);
             await _cursor.ClickAsync();
 
@@ -153,7 +153,7 @@ public sealed class VisionWristCrafting : BaseScript
                 return;
             }
 
-            var targetMailButtonRandomPoint = targetMailButtonImageMatch.ToGlobalBounds().Inset(5).GetRandomPointInBounds();
+            var targetMailButtonRandomPoint = targetMailButtonImageMatch.ToGlobalBounds().Inset(20).GetRandomPointInBounds();
             await _cursor.MoveToAsync(targetMailButtonRandomPoint, cancellationToken: cancellationToken);
             await _cursor.ClickAsync();
 
@@ -174,9 +174,12 @@ public sealed class VisionWristCrafting : BaseScript
                 return;
             }
 
-            var tsmMailboxGroupsButtonRandomPoint = tsmMailboxGroupsImageMatch.ToGlobalBounds().Inset(5).GetRandomPointInBounds();
+            var tsmMailboxGroupsButtonRandomPoint = tsmMailboxGroupsImageMatch.ToGlobalBounds().Inset(10).GetRandomPointInBounds();
             await _cursor.MoveToAsync(tsmMailboxGroupsButtonRandomPoint, cancellationToken: cancellationToken);
             await _cursor.ClickAsync();
+
+            //wait 1 sec, to ensure tab switch
+            await Task.Delay(TimeSpan.FromSeconds(1));
 
             // click the TSM mail selected groups button
             var tsmMailSelectedGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TsmMailSelectedGroupsButton], 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);

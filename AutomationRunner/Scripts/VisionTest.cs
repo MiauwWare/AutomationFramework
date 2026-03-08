@@ -68,7 +68,7 @@ public sealed class VisionTest : BaseScript
     protected override async Task RunAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
     {
         var res = await _vision.FindImageAsync(
-            _templates[VisionTemplateFileNames.TailoringButton],
+            _templates[VisionTemplateFileNames.TsmMailSelectedGroupsButton],
             searchRegion: Screen.PrimaryScreen?.Bounds,
             minConfidence: 0.8,
             cancellationToken: cancellationToken);
