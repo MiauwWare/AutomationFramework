@@ -2,14 +2,16 @@ namespace AutomationRunner;
 
 public static class VisionTemplateFileNames
 {
-    public const string GildedTradersBrutosaur = "gilded_traders_brutosaur.png";
-    public const string TailoringButton = "tailoring_button.png";
-    public const string TargetMailButton = "target_mail_button.png";
-    public const string TsmCloseButton = "tsm_close_button.png";
-    public const string TsmCourtlyWrists = "tsm_courtly_wrists.png";
-    public const string TsmCraftButton = "tsm_craft_button.png";
-    public const string TsmDestroyNextButton = "tsm_destroy_next_button.png";
-    public const string TsmMailSelectedGroupsButton = "tsm_mail_selected_groups_button.png";
-    public const string TsmMailboxGroupsButton = "tsm_mailbox_groups_button.png";
-    public const string TsmMaxButton = "tsm_max_button.png";
+    public const string AB_GILDED_TRADERS_BRUTOSAUR_BTN = "ab_gilded_traders_brutosaur_btn.png";
+    public const string AB_TAILORING_BTN = "ab_tailoring_btn.png";
+    public const string AB_TARGET_MAIL_NPC_BTN = "ab_target_mail_npc_btn.png";
+    public const string TSM_CLOSE_BTN = "tsm_close_btn.png";
+    public const string TSM_COURTLY_WRISTS = "tsm_courtly_wrists.png";
+    public const string TSM_CRAFT_BTN = "tsm_craft_btn.png";
+    public const string TSM_DESTROY_NEXT_BTN = "tsm_destroy_next_btn.png";
+    public const string TSM_MAIL_SELECTED_GROUPS_BTN = "tsm_mail_selected_groups_btn.png";
+    public const string TSM_MAILBOX_GROUPS_BTN = "tsm_mailbox_groups_btn.png";
+    public const string TSM_MAX_BTN = "tsm_max_btn.png";
+    public const string AB_TSM_DESTROY_BTN = "ab_tsm_destroy_btn.png";
+    public const string TSM_OPEN_ALL_MAIL = "tsm_open_all_mail.png";
 }
