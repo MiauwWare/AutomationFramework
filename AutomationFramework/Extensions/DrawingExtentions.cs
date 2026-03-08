@@ -17,11 +17,15 @@ public static class DrawingExtensions
     {
         insetY ??= insetX;
 
+        // 10, 10, 100, 100 -> 10, 10, 110, 110
+        // inset by 20
+        // 30, 30, x, x, -> 30, 30, 90, 90
+
         return new Rectangle(
             rect.Left + insetX,
             rect.Top + insetY.Value,
-            rect.Width - insetX,
-            rect.Height - insetY.Value
+            rect.Width - 2 * insetX,
+            rect.Height - 2 * insetY.Value
         );
     }
 
@@ -32,8 +36,8 @@ public static class DrawingExtensions
         return new RectangleF(
             rect.Left + insetX,
             rect.Top + insetY.Value,
-            rect.Width - insetX,
-            rect.Height - insetY.Value
+            rect.Width - 2 * insetX,
+            rect.Height - 2 * insetY.Value
         );
     }
 

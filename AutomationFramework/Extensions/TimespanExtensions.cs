@@ -5,7 +5,7 @@ public static class TimespanExtensions
     /// <summary>
     /// Applies a random factor to the base duration to simulate human-like variability.
     /// </summary>
-    public static TimeSpan ApplyRandomFactor(this TimeSpan baseDuration, double minFactor, double maxFactor)
+    public static TimeSpan ApplyRandomFactor(this TimeSpan baseDuration, double minFactor = 0.8, double maxFactor = 1.2)
     {
         if (baseDuration <= TimeSpan.Zero)
         {
