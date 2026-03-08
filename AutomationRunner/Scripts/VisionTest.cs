@@ -34,14 +34,14 @@ public sealed class VisionTest : BaseScript
         // Load templates
         AcquireTemplates
         (
-            VisionTemplateFileNames.TailoringButton,
-            VisionTemplateFileNames.TsmMaxButton,
-            VisionTemplateFileNames.TsmCraftButton,
-            VisionTemplateFileNames.TsmCloseButton,
-            VisionTemplateFileNames.GildedTradersBrutosaur,
-            VisionTemplateFileNames.TargetMailButton,
-            VisionTemplateFileNames.TsmMailboxGroupsButton,
-            VisionTemplateFileNames.TsmMailSelectedGroupsButton
+            VisionTemplateFileNames.AB_TAILORING_BTN,
+            VisionTemplateFileNames.TSM_MAX_BTN,
+            VisionTemplateFileNames.TSM_CRAFT_BTN,
+            VisionTemplateFileNames.TSM_CLOSE_BTN,
+            VisionTemplateFileNames.AB_GILDED_TRADERS_BRUTOSAUR_BTN,
+            VisionTemplateFileNames.AB_TARGET_MAIL_NPC_BTN,
+            VisionTemplateFileNames.TSM_MAILBOX_GROUPS_BTN,
+            VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN
         );
 
 
@@ -68,7 +68,7 @@ public sealed class VisionTest : BaseScript
     protected override async Task RunAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
     {
         var res = await _vision.FindImageAsync(
-            _templates[VisionTemplateFileNames.TsmMailSelectedGroupsButton],
+            _templates[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN],
             searchRegion: Screen.PrimaryScreen?.Bounds,
             minConfidence: 0.8,
             cancellationToken: cancellationToken);
