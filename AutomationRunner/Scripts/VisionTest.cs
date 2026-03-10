@@ -70,7 +70,7 @@ public sealed class VisionTest : BaseScript
         var res = await _vision.FindImageAsync(
             _templates[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN],
             searchRegion: Screen.PrimaryScreen?.Bounds,
-            minConfidence: 0.8,
+            minConfidence: 0.6,
             cancellationToken: cancellationToken);
 
         if (res == null)

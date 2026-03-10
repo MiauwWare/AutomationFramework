@@ -69,6 +69,17 @@ public static class DrawingExtensions
     }
 
 
+    public static Rectangle Translate(this Rectangle rect, int offsetX, int offsetY)
+    {
+        return new Rectangle(rect.X + offsetX, rect.Y + offsetY, rect.Width, rect.Height);
+    }
+
+    public static RectangleF Translate(this RectangleF rect, float offsetX, float offsetY)
+    {
+        return new RectangleF(rect.X + offsetX, rect.Y + offsetY, rect.Width, rect.Height);
+    }
+
+
     public static Vector2 GetRandomPointInBounds(this RectangleF rect)
     {
         float x = rect.Left + Random.Shared.NextFloat(0, rect.Width);

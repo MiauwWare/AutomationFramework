@@ -95,9 +95,15 @@ public sealed class VisionWristCrafting : BaseScript
                 return;
             }
 
-            var tsmMaxButtonRandomPoint = maxButtonImageMatch.ToGlobalBounds().Padd(0, 10).GetRandomPointInBounds();
-            await _cursor.MoveToAsync(tsmMaxButtonRandomPoint, cancellationToken: cancellationToken);
+            var maxButtonBounds = maxButtonImageMatch.ToGlobalBounds().Padd(0, 10);
+            maxButtonBounds = maxButtonBounds.Translate(-3 * maxButtonBounds.Width, 0);
+
+            var quantityInputRandomPoint = maxButtonBounds.GetRandomPointInBounds();
+            await _cursor.MoveToAsync(quantityInputRandomPoint, cancellationToken: cancellationToken);
             await _cursor.ClickAsync();
+
+            // input the quantity to craft, which is 200 in this case
+            await _keyboard.TypeTextAsync("200", cancellationToken: cancellationToken);
 
             // Click TSM craft button
             var craftButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CRAFT_BTN], 0.8, cancellationToken: cancellationToken, searchRegion: searchRegion);
@@ -113,7 +119,7 @@ public sealed class VisionWristCrafting : BaseScript
 
 
             // wait for crafts to be complete about 100 sec
-            await Task.Delay(TimeSpan.FromSeconds(120).ApplyRandomFactor(0.8, 1.2), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(110).ApplyRandomFactor(0.9, 1), cancellationToken);
 
             // Click TSM close button
             var tsmCloseButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN], 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
@@ -183,7 +189,7 @@ public sealed class VisionWristCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(1));
 
             // click the TSM mail selected groups button
-            var tsmMailSelectedGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN], 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var tsmMailSelectedGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN], 0.50, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (tsmMailSelectedGroupsImageMatch == null)
             {
                 Console.WriteLine("Mail Selected Groups button not found.");
