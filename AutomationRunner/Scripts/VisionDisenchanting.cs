@@ -67,20 +67,20 @@ public sealed class VisionDisenchanting : BaseScript
             // find and click the "open all mail" button with retries, if not found, end the script
             if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL], bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
             {
-                Console.WriteLine("Open all mail button not found.");
-                return;
+                if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL], bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
+                {
+                    Console.WriteLine("Open all mail button not found.");
+                    return;
+                }
             }
         
             // wait for all mail to open
             await Task.Delay(TimeSpan.FromSeconds(35).ApplyRandomFactor(), cancellationToken);
 
 
-            // find the "close mailbox" button with retries, if not found, end the script
-            if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN], bounds => bounds.Inset(2), cancellationToken: cancellationToken) == false)
-            {
-                Console.WriteLine("Close mailbox button not found.");
-                return;
-            }
+            //close mailbox by pressing escape
+            await _keyboard.PressKeyAsync(VirtualKey.Escape);
+                       
 
             // =========== disenchanting ============
 
