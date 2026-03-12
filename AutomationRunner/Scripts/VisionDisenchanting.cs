@@ -63,15 +63,15 @@ public sealed class VisionDisenchanting : BaseScript
             await _keyboard.PressKeyAsync(AutomationFramework.VirtualKey.F);
             await Task.Delay(TimeSpan.FromMilliseconds(500).ApplyRandomFactor(), cancellationToken);
 
+            //do it again just to make sure
+            await _keyboard.PressKeyAsync(AutomationFramework.VirtualKey.F);
+            await Task.Delay(TimeSpan.FromMilliseconds(500).ApplyRandomFactor(), cancellationToken);
+
             
-            // find and click the "open all mail" button with retries, if not found, end the script
             if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL], bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
             {
-                if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL], bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
-                {
-                    Console.WriteLine("Open all mail button not found.");
-                    return;
-                }
+                Console.WriteLine("Open all mail button not found.");
+                return;
             }
         
             // wait for all mail to open
@@ -118,7 +118,7 @@ public sealed class VisionDisenchanting : BaseScript
         // find the template on screen with retries, if not found, return false
         var imageMatch = await Task.RunWithRetry
         (
-            () => _vision.FindImageAsync
+            (cancellationToken) => _vision.FindImageAsync
             (
                 template,
                 confidence,
@@ -127,7 +127,8 @@ public sealed class VisionDisenchanting : BaseScript
             ),
             successCondition: (result) => result != null,
             maxRetries: 3,
-            retryDelay: TimeSpan.FromSeconds(1)
+            retryDelay: TimeSpan.FromSeconds(1),
+            cancellationToken
         );
 
         if (imageMatch == null)

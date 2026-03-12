@@ -30,7 +30,7 @@ public static class TaskExtensions
         /// <summary>
         /// Retries until the success condition returns true, or retries are exhausted.
         /// </summary>
-        public static async Task<T> RunWithRetry<T>(Func<Task<T>> operation, Func<T, bool> successCondition, int maxRetries, TimeSpan retryDelay)
+        public static async Task<T> RunWithRetry<T>(Func<CancellationToken, Task<T>> operation, Func<T, bool> successCondition, int maxRetries, TimeSpan retryDelay, CancellationToken cancellationToken = default)
         {
             if (operation == null) throw new ArgumentNullException(nameof(operation));
             if (successCondition == null) throw new ArgumentNullException(nameof(successCondition));
@@ -40,7 +40,8 @@ public static class TaskExtensions
             T result = default!;
             for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                result = await operation().ConfigureAwait(false);
+                result = await operation(cancellationToken).ConfigureAwait(false);
+
                 if (successCondition(result))
                 {
                     return result;
@@ -48,7 +49,7 @@ public static class TaskExtensions
 
                 if (attempt < maxRetries)
                 {
-                    await Task.Delay(retryDelay).ConfigureAwait(false);
+                    await Task.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
                 }
             }
 
