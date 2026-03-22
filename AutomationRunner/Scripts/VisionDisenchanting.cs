@@ -63,10 +63,6 @@ public sealed class VisionDisenchanting : BaseScript
             await _keyboard.PressKeyAsync(AutomationFramework.VirtualKey.F);
             await Task.Delay(TimeSpan.FromMilliseconds(500).ApplyRandomFactor(), cancellationToken);
 
-            //do it again just to make sure
-            await _keyboard.PressKeyAsync(AutomationFramework.VirtualKey.F);
-            await Task.Delay(TimeSpan.FromMilliseconds(500).ApplyRandomFactor(), cancellationToken);
-
             
             if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL], bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
             {

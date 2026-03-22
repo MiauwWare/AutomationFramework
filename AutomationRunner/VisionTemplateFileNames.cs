@@ -4,6 +4,7 @@ public static class VisionTemplateFileNames
 {
     public const string AB_GILDED_TRADERS_BRUTOSAUR_BTN = "ab_gilded_traders_brutosaur_btn.png";
     public const string AB_TAILORING_BTN = "ab_tailoring_btn.png";
+    public const string AB_ENGINEERING_BTN = "ab_engineering_btn.png";
     public const string AB_TARGET_MAIL_NPC_BTN = "ab_target_mail_npc_btn.png";
     public const string TSM_CLOSE_BTN = "tsm_close_btn.png";
     public const string TSM_COURTLY_WRISTS = "tsm_courtly_wrists.png";

@@ -9,9 +9,9 @@ using OpenCvSharp;
 
 namespace AutomationRunner.Scripts;
 
-public sealed class VisionWristCrafting : BaseScript
+public sealed class VisionShadesCrafting : BaseScript
 {
-    public override string Name => "vision-wrist-crafting";
+    public override string Name => "vision-shades-crafting";
 
     public override string Description => "Uses vision to find the correct buttons for wrist crafting and clicks them.";
 
@@ -31,10 +31,9 @@ public sealed class VisionWristCrafting : BaseScript
         });
 
         // Load templates
-        // Load templates
         AcquireTemplates
         (
-            VisionTemplateFileNames.AB_TAILORING_BTN,
+            VisionTemplateFileNames.AB_ENGINEERING_BTN,
             VisionTemplateFileNames.TSM_MAX_BTN,
             VisionTemplateFileNames.TSM_CRAFT_BTN,
             VisionTemplateFileNames.TSM_CLOSE_BTN,
@@ -71,20 +70,20 @@ public sealed class VisionWristCrafting : BaseScript
 
         while (cancellationToken.IsCancellationRequested == false)
         {
-            // Open tailoring window
-            var tailoringButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_TAILORING_BTN], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
-            if (tailoringButtonImageMatch is null)
+            // Open crafting window
+            var engineeringButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_ENGINEERING_BTN], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            if (engineeringButtonImageMatch is null)
             {
-                Console.WriteLine("Tailoring button not found.");
+                Console.WriteLine("Engineering button not found.");
                 return;
             }
 
-            var tailoringButtonRandomPoint = tailoringButtonImageMatch.ToGlobalBounds().Inset(20).GetRandomPointInBounds();
-            await _cursor.MoveToAsync(tailoringButtonRandomPoint, cancellationToken: cancellationToken);
+            var engineeringButtonRandomPoint = engineeringButtonImageMatch.ToGlobalBounds().Inset(20).GetRandomPointInBounds();
+            await _cursor.MoveToAsync(engineeringButtonRandomPoint, cancellationToken: cancellationToken);
             await _cursor.ClickAsync();
 
 
-            // Wait for tailoring window to open
+            // Wait for window to open
             await Task.Delay(TimeSpan.FromSeconds(Random.Shared.NextFloat(2, 3)), cancellationToken);
 
             // Click TSM max button
@@ -119,7 +118,7 @@ public sealed class VisionWristCrafting : BaseScript
 
 
             // wait for crafts to be complete about 100 sec
-            await Task.Delay(TimeSpan.FromSeconds(110).ApplyRandomFactor(0.9, 1), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(175).ApplyRandomFactor(0.9, 1), cancellationToken);
 
             // Click TSM close button
             var tsmCloseButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN], 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
@@ -201,7 +200,7 @@ public sealed class VisionWristCrafting : BaseScript
             await _cursor.ClickAsync();
 
             // wait for all mail to send
-            await Task.Delay(TimeSpan.FromSeconds(8).ApplyRandomFactor(0.8, 1.2), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(16).ApplyRandomFactor(0.8, 1.2), cancellationToken);
         }
     }   
 
