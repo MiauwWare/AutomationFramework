@@ -17,10 +17,6 @@ public static class DrawingExtensions
     {
         insetY ??= insetX;
 
-        // 10, 10, 100, 100 -> 10, 10, 110, 110
-        // inset by 20
-        // 30, 30, x, x, -> 30, 30, 90, 90
-
         return new Rectangle(
             rect.Left + insetX,
             rect.Top + insetY.Value,
@@ -40,6 +36,7 @@ public static class DrawingExtensions
             rect.Height - 2 * insetY.Value
         );
     }
+    
 
     public static Rectangle Padd(this Rectangle rect, int paddingX, int? paddingY = null, Vector2? anchor = null)
     {
@@ -64,6 +61,39 @@ public static class DrawingExtensions
         float y = rect.Y - (paddingY.Value * anchor.Value.Y);
         float width = rect.Width + paddingX;
         float height = rect.Height + paddingY.Value;
+
+        return new RectangleF(x, y, width, height);
+    }
+
+    public static Rectangle Scale(this Rectangle rect, float scaleX, float? scaleY = null, Vector2? anchor = null)
+    {
+        scaleY ??= scaleX;
+        anchor ??= new Vector2(0.5f, 0.5f);
+
+        float width = rect.Width * scaleX;
+        float height = rect.Height * scaleY.Value;
+
+        float x = rect.X + (rect.Width * anchor.Value.X) - (width * anchor.Value.X);
+        float y = rect.Y + (rect.Height * anchor.Value.Y) - (height * anchor.Value.Y);
+
+        return new Rectangle(
+            (int)MathF.Round(x),
+            (int)MathF.Round(y),
+            (int)MathF.Round(width),
+            (int)MathF.Round(height)
+        );
+    }
+    
+    public static RectangleF Scale(this RectangleF rect, float scaleX, float? scaleY = null, Vector2? anchor = null)
+    {
+        scaleY ??= scaleX;
+        anchor ??= new Vector2(0.5f, 0.5f);
+
+        float width = rect.Width * scaleX;
+        float height = rect.Height * scaleY.Value;
+
+        float x = rect.X + (rect.Width * anchor.Value.X) - (width * anchor.Value.X);
+        float y = rect.Y + (rect.Height * anchor.Value.Y) - (height * anchor.Value.Y);
 
         return new RectangleF(x, y, width, height);
     }
@@ -95,4 +125,6 @@ public static class DrawingExtensions
 
         return new Vector2(x, y);
     }
+
+
 }

@@ -1,3 +1,5 @@
+using AutomationFramework.Windows;
+
 namespace AutomationFramework;
 
 /// <summary>
@@ -61,7 +63,7 @@ public sealed class Keyboard
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            InputNative.SendKeyDown(virtualKey);
+            WinInput.SendKeyDown(virtualKey);
         }
         finally
         {
@@ -85,7 +87,7 @@ public sealed class Keyboard
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            InputNative.SendKeyUp(virtualKey);
+            WinInput.SendKeyUp(virtualKey);
         }
         finally
         {
@@ -118,14 +120,14 @@ public sealed class Keyboard
             holdDuration ??= _options.DefaultKeyPressDuration;
             holdDuration = TimespanExtensions.ApplyRandomFactor(holdDuration.Value, _options.MinDurationFactor, _options.MaxDurationFactor);
 
-            InputNative.SendKeyDown(virtualKey);
+            WinInput.SendKeyDown(virtualKey);
 
             if (holdDuration > TimeSpan.Zero)
             {
                 await Task.Delay(holdDuration.Value, cancellationToken).ConfigureAwait(false);
             }
 
-            InputNative.SendKeyUp(virtualKey);
+            WinInput.SendKeyUp(virtualKey);
         }
         finally
         {
@@ -159,7 +161,7 @@ public sealed class Keyboard
 
             foreach (var key in virtualKeys)
             {
-                InputNative.SendKeyDown((ushort)key);
+                WinInput.SendKeyDown((ushort)key);
                 var interval = keypressInterval.Value.ApplyRandomFactor(_options.MinDurationFactor, _options.MaxDurationFactor);
                 await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
             }
@@ -173,7 +175,7 @@ public sealed class Keyboard
             for (var index = virtualKeys.Length - 1; index >= 0; index--)
             {
                 // TODO: consider adding a small random delay between key releases to better simulate human behavior.
-                InputNative.SendKeyUp((ushort)virtualKeys[index]);
+                WinInput.SendKeyUp((ushort)virtualKeys[index]);
                 var interval = keypressInterval.Value.ApplyRandomFactor(_options.MinDurationFactor, _options.MaxDurationFactor) * 0.5f;
                 await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
             }
@@ -203,7 +205,7 @@ public sealed class Keyboard
             foreach (var character in text)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                InputNative.SendUnicodeChar(character);
+                WinInput.SendUnicodeChar(character);
 
                 if (charDelay > TimeSpan.Zero)
                 {

@@ -6,8 +6,5 @@ public interface IAutomationScript : IDisposable
 
     string Description { get; }
 
-
-    Task InitializeAsync(ScriptExecutionContext context, CancellationToken cancellationToken) => Task.CompletedTask;
-
-    Task ExecuteAsync(ScriptExecutionContext context, CancellationToken cancellationToken);
+    Task ExecuteAsync(CancellationToken cancellationToken);
 }

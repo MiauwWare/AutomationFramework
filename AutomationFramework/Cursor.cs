@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 using AutomationFramework.Extensions;
+using AutomationFramework.Windows;
 
 namespace AutomationFramework;
 
@@ -165,7 +166,7 @@ public sealed class Cursor
 				tPoint = targetPos;
 			}
 
-			InputNative.SendMouseAbsolute((int)Math.Round(tPoint.X), (int)Math.Round(tPoint.Y));
+			WinInput.SendMouseAbsolute((int)Math.Round(tPoint.X), (int)Math.Round(tPoint.Y));
 
 			var remainingTicks = totalTicks - assignedTicks;
 			
@@ -189,7 +190,7 @@ public sealed class Cursor
 	/// </summary>
 	public void MouseDown(MouseButton button = MouseButton.Left)
 	{
-		InputNative.SendMouseButtonDown(button);
+		WinInput.SendMouseButtonDown(button);
 	}
 
 	/// <summary>
@@ -197,7 +198,7 @@ public sealed class Cursor
 	/// </summary>
 	public void MouseUp(MouseButton button = MouseButton.Left)
 	{
-		InputNative.SendMouseButtonUp(button);
+		WinInput.SendMouseButtonUp(button);
 	}
 
 

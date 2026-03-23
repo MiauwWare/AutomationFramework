@@ -1,5 +1,9 @@
 ﻿using AutomationRunner.Scripting;
+using AutomationRunner.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System.CommandLine;
 
 namespace AutomationRunner;
@@ -8,25 +12,19 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
-        var configuration = BuildConfiguration();
-        var scripts = ScriptRegistry.DiscoverScripts();
-
-        if (scripts.Count == 0)
-        {
-            Console.WriteLine("No scripts were found. Add classes in the Scripts folder that implement IAutomationScript.");
-            return 1;
-        }
+        using var host = BuildHost(args);
+        var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("AutomationRunner.Program");
 
         var rootCommand = new RootCommand("AutomationRunner script runner")
         {
-            CreateRunCommand(configuration, scripts),
-            CreateListCommand(configuration, scripts)
+            CreateRunCommand(host.Services, logger),
+            CreateListCommand(host.Services, logger)
         };
 
         return rootCommand.Parse(args).Invoke();
     }
 
-    private static Command CreateRunCommand(IConfiguration configuration, IReadOnlyList<IAutomationScript> scripts)
+    private static Command CreateRunCommand(IServiceProvider services, ILogger logger)
     {
         var scriptNameArgument = new Argument<string>("script-name")
         {
@@ -43,11 +41,11 @@ internal static class Program
             var requestedScriptName = parseResult.GetValue(scriptNameArgument);
             if (string.IsNullOrWhiteSpace(requestedScriptName))
             {
-                Console.WriteLine("Script name is required.");
+                logger.LogWarning("Script name is required.");
                 return 1;
             }
 
-            return HandleRunCommandAsync(requestedScriptName, configuration, scripts, CancellationToken.None)
+            return HandleRunCommandAsync(requestedScriptName, services, logger, CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
         });
@@ -55,11 +53,11 @@ internal static class Program
         return runCommand;
     }
 
-    private static Command CreateListCommand(IConfiguration configuration, IReadOnlyList<IAutomationScript> scripts)
+    private static Command CreateListCommand(IServiceProvider services, ILogger logger)
     {
         var listCommand = new Command("list", "List scripts, then choose one to run or exit.");
         listCommand.SetAction(_ =>
-            HandleListCommandAsync(configuration, scripts, CancellationToken.None)
+            HandleListCommandAsync(services, logger, CancellationToken.None)
                 .GetAwaiter()
                 .GetResult());
 
@@ -68,52 +66,68 @@ internal static class Program
 
     private static async Task<int> HandleRunCommandAsync(
         string scriptName,
-        IConfiguration configuration,
-        IReadOnlyList<IAutomationScript> scripts,
+        IServiceProvider services,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
-        var selectedScript = ResolveByName(scriptName, scripts);
-        if (selectedScript is null)
+        var scripts = GetScriptInfos(services);
+        if (scripts.Count == 0)
         {
-            Console.WriteLine($"Script '{scriptName}' was not found.");
+            logger.LogError("No scripts were found. Add classes in the Scripts folder that implement IAutomationScript.");
             return 1;
         }
 
-        return await RunScriptAsync(selectedScript, configuration, cancellationToken);
+        var selectedScript = ResolveByName(scriptName, scripts);
+        if (selectedScript is null)
+        {
+            logger.LogWarning("Script '{ScriptName}' was not found.", scriptName);
+            return 1;
+        }
+
+        return await RunScriptAsync(selectedScript.Value.Name, services, logger, cancellationToken);
     }
 
     private static async Task<int> HandleListCommandAsync(
-        IConfiguration configuration,
-        IReadOnlyList<IAutomationScript> scripts,
+        IServiceProvider services,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
+        var scripts = GetScriptInfos(services);
+        if (scripts.Count == 0)
+        {
+            logger.LogError("No scripts were found. Add classes in the Scripts folder that implement IAutomationScript.");
+            return 1;
+        }
+
         while (true)
         {
             var selection = PromptForScriptSelection(scripts);
             if (selection.ExitRequested)
             {
-                Console.WriteLine("Exiting.");
+                logger.LogInformation("Exiting.");
                 return 0;
             }
 
             if (selection.Script is null)
             {
-                Console.WriteLine("No script selected.");
-                Console.WriteLine();
+                logger.LogWarning("No script selected.");
                 continue;
             }
 
-            return await RunScriptAsync(selection.Script, configuration, cancellationToken);
+            var selectedScript = selection.Script.Value;
+            return await RunScriptAsync(selectedScript.Name, services, logger, cancellationToken);
         }
     }
 
     private static async Task<int> RunScriptAsync(
-        IAutomationScript selectedScript,
-        IConfiguration configuration,
+        string scriptName,
+        IServiceProvider services,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
         using var cancellationTokenSource = new CancellationTokenSource();
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token, cancellationToken);
+        using var scope = services.CreateScope();
 
         void OnCancelKeyPress(object? _, ConsoleCancelEventArgs eventArgs)
         {
@@ -123,21 +137,28 @@ internal static class Program
 
         Console.CancelKeyPress += OnCancelKeyPress;
 
-        var context = new ScriptExecutionContext(configuration);
+        var scripts = scope.ServiceProvider.GetServices<IAutomationScript>();
+        var selectedScript = scripts.FirstOrDefault(script =>
+            string.Equals(script.Name, scriptName, StringComparison.OrdinalIgnoreCase));
 
-        Console.WriteLine($"Running script: {selectedScript.Name}");
-        Console.WriteLine("Press Ctrl+C to stop.");
+        if (selectedScript is null)
+        {
+            logger.LogError("Script '{ScriptName}' is registered in menu but could not be resolved from DI.", scriptName);
+            return 1;
+        }
+
+        logger.LogInformation("Running script: {ScriptName}", selectedScript.Name);
+        logger.LogInformation("Press Ctrl+C to stop.");
 
         try
         {
-            await selectedScript.ExecuteAsync(context, linkedCts.Token);
-            Console.WriteLine("Script completed.");
-            Console.WriteLine();
+            await selectedScript.ExecuteAsync(linkedCts.Token);
+            logger.LogInformation("Script completed.");
             return 0;
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine("Script canceled.");
+            logger.LogInformation("Script canceled.");
             return 2;
         }
         finally
@@ -150,25 +171,63 @@ internal static class Program
             }
             catch (Exception disposeException)
             {
-                Console.WriteLine($"Warning: script cleanup failed: {disposeException.Message}");
+                logger.LogWarning(disposeException, "Script cleanup failed for {ScriptName}.", selectedScript.Name);
             }
         }
     }
 
-    private static IConfiguration BuildConfiguration()
+    private static IHost BuildHost(string[] args)
     {
-        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-            ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-            ?? "Production";
+        var builder = Host.CreateApplicationBuilder(args);
 
-        return new ConfigurationBuilder()
+        builder.Configuration.Sources.Clear();
+        builder.Configuration
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
-            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: false)
-            .Build();
+            .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+            .AddEnvironmentVariables();
+
+        builder.Logging.ClearProviders();
+        builder.Logging
+            .AddConfiguration(builder.Configuration.GetSection("Logging"))
+            .AddSimpleConsole(options =>
+            {
+                options.SingleLine = true;
+                options.TimestampFormat = "HH:mm:ss ";
+                options.IncludeScopes = false;
+            });
+
+        builder.Services.AddTransient<AutomationFramework.Cursor>();
+        builder.Services.AddTransient<AutomationFramework.Keyboard>();
+        builder.Services.AddSingleton<IAutomationVisionFactory, AutomationVisionFactory>();
+        builder.Services.AddDiscoveredScripts();
+
+        return builder.Build();
     }
 
-    private static ScriptSelection PromptForScriptSelection(IReadOnlyList<IAutomationScript> scripts)
+    private static IReadOnlyList<ScriptInfo> GetScriptInfos(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var scripts = scope.ServiceProvider.GetServices<IAutomationScript>()
+            .Select(script => new ScriptInfo(script.Name, script.Description))
+            .OrderBy(script => script.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var duplicateNames = scripts
+            .GroupBy(script => script.Name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToArray();
+
+        if (duplicateNames.Length > 0)
+        {
+            throw new InvalidOperationException($"Duplicate script names found: {string.Join(", ", duplicateNames)}");
+        }
+
+        return scripts;
+    }
+
+    private static ScriptSelection PromptForScriptSelection(IReadOnlyList<ScriptInfo> scripts)
     {
         PrintScriptList(scripts);
         Console.Write("Select a script by number or name (or type 'exit'): ");
@@ -197,13 +256,20 @@ internal static class Program
         return new ScriptSelection(script, false);
     }
 
-    private static IAutomationScript? ResolveByName(string scriptName, IReadOnlyList<IAutomationScript> scripts)
+    private static ScriptInfo? ResolveByName(string scriptName, IReadOnlyList<ScriptInfo> scripts)
     {
-        return scripts.FirstOrDefault(script =>
-            string.Equals(script.Name, scriptName, StringComparison.OrdinalIgnoreCase));
+        foreach (var script in scripts)
+        {
+            if (string.Equals(script.Name, scriptName, StringComparison.OrdinalIgnoreCase))
+            {
+                return script;
+            }
+        }
+
+        return null;
     }
 
-    private static IAutomationScript? ResolveByNameOrIndex(string selector, IReadOnlyList<IAutomationScript> scripts)
+    private static ScriptInfo? ResolveByNameOrIndex(string selector, IReadOnlyList<ScriptInfo> scripts)
     {
         if (int.TryParse(selector, out var scriptNumber))
         {
@@ -217,10 +283,18 @@ internal static class Program
             return null;
         }
 
-        return scripts.FirstOrDefault(script => string.Equals(script.Name, selector, StringComparison.OrdinalIgnoreCase));
+        foreach (var script in scripts)
+        {
+            if (string.Equals(script.Name, selector, StringComparison.OrdinalIgnoreCase))
+            {
+                return script;
+            }
+        }
+
+        return null;
     }
 
-    private static void PrintScriptList(IReadOnlyList<IAutomationScript> scripts)
+    private static void PrintScriptList(IReadOnlyList<ScriptInfo> scripts)
     {
         Console.WriteLine("Available scripts:");
         for (var index = 0; index < scripts.Count; index++)
@@ -230,6 +304,7 @@ internal static class Program
         }
     }
 
-    private readonly record struct ScriptSelection(IAutomationScript? Script, bool ExitRequested);
+    private readonly record struct ScriptInfo(string Name, string Description);
+    private readonly record struct ScriptSelection(ScriptInfo? Script, bool ExitRequested);
 
 }

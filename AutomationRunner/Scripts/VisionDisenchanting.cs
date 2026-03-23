@@ -2,30 +2,40 @@ using System.Numerics;
 using AutomationFramework;
 using AutomationFramework.Extensions;
 using AutomationRunner.Scripting;
-using Microsoft.Extensions.Configuration;
+using AutomationRunner.Services;
+using Microsoft.Extensions.Logging;
 using OpenCvSharp;
 
 namespace AutomationRunner.Scripts;
 
 public sealed class VisionDisenchanting : BaseScript
 {
+    public VisionDisenchanting(
+        AutomationFramework.Cursor cursor,
+        AutomationFramework.Keyboard keyboard,
+        IAutomationVisionFactory visionFactory,
+        ILogger<VisionDisenchanting> logger)
+        : base(logger)
+    {
+        _cursor = cursor;
+        _keyboard = keyboard;
+        _visionFactory = visionFactory;
+    }
+
     public override string Name => "vision-disenchanting";
 
     public override string Description => "Disenchants and opens mailbox";
 
-    private AutomationFramework.Cursor _cursor = new();
+    private readonly AutomationFramework.Cursor _cursor;
     private AutomationFramework.Vision _vision = null!;
-    private AutomationFramework.Keyboard _keyboard = new();
+    private readonly AutomationFramework.Keyboard _keyboard;
+    private readonly IAutomationVisionFactory _visionFactory;
 
     private Dictionary<string, Mat> _templates = new Dictionary<string, Mat>();
 
-    protected override Task InitializeAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
+    protected override Task InitializeAsync(CancellationToken cancellationToken)
     {
-        _vision = new AutomationFramework.Vision(new AutomationFramework.Vision.Options
-        {
-            OcrLanguage = "eng",
-            OcrDataPath = context.Configuration.GetRequiredSection("OcrDataPath").Value!
-        });
+        _vision = _visionFactory.Create();
 
         AcquireTemplates
         (
@@ -55,7 +65,7 @@ public sealed class VisionDisenchanting : BaseScript
         _vision.Dispose();
     }
 
-    protected override async Task RunAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
+    protected override async Task RunAsync(CancellationToken cancellationToken)
     {
         using var disenchantingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var disenchantingTask = RunDisenchantingLoopAsync(disenchantingCts.Token);
@@ -74,7 +84,7 @@ public sealed class VisionDisenchanting : BaseScript
             
                 if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL], bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
                 {
-                    Console.WriteLine("Open all mail button not found.");
+                    Logger.LogWarning("Open all mail button not found.");
                     break;
                 }
         
@@ -82,8 +92,12 @@ public sealed class VisionDisenchanting : BaseScript
                 await Task.Delay(TimeSpan.FromSeconds(35).ApplyRandomFactor(), cancellationToken);
 
 
-                //close mailbox by pressing escape
-                await _keyboard.PressKeyAsync(VirtualKey.Escape, cancellationToken: cancellationToken);
+                //close mailbox by pressing the close button
+                if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN], (bounds) => bounds.Scale(0.5f), cancellationToken: cancellationToken) == false)
+                {
+                    Logger.LogWarning("TSM close button not found.");
+                    break;
+                }
             }
         }
         finally

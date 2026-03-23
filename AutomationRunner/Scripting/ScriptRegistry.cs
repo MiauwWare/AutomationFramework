@@ -1,32 +1,28 @@
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AutomationRunner.Scripting;
 
 public static class ScriptRegistry
 {
-    public static IReadOnlyList<IAutomationScript> DiscoverScripts()
+    public static IReadOnlyList<Type> DiscoverScriptTypes()
     {
-        var scripts = Assembly
+        return Assembly
             .GetExecutingAssembly()
             .GetTypes()
             .Where(type => !type.IsAbstract && !type.IsInterface)
             .Where(type => typeof(IAutomationScript).IsAssignableFrom(type))
-            .Where(type => type.GetConstructor(Type.EmptyTypes) is not null)
-            .Select(type => (IAutomationScript)Activator.CreateInstance(type)!)
-            .OrderBy(script => script.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(type => type.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
 
-        var duplicateNames = scripts
-            .GroupBy(script => script.Name, StringComparer.OrdinalIgnoreCase)
-            .Where(group => group.Count() > 1)
-            .Select(group => group.Key)
-            .ToArray();
-
-        if (duplicateNames.Length > 0)
+    public static IServiceCollection AddDiscoveredScripts(this IServiceCollection services)
+    {
+        foreach (var scriptType in DiscoverScriptTypes())
         {
-            throw new InvalidOperationException($"Duplicate script names found: {string.Join(", ", duplicateNames)}");
+            services.AddTransient(typeof(IAutomationScript), scriptType);
         }
 
-        return scripts;
+        return services;
     }
 }

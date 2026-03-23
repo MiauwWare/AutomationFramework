@@ -1,33 +1,41 @@
 namespace AutomationRunner.Scripting;
 
+using Microsoft.Extensions.Logging;
 
 public abstract class BaseScript : IAutomationScript
 {
+    protected BaseScript(ILogger logger)
+    {
+        Logger = logger;
+    }
+
     public abstract string Name { get; }
 
     public abstract string Description { get; }
 
+    protected ILogger Logger { get; }
+
     private bool _initialized = false;
     
-    public async Task ExecuteAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         TimeSpan startDelay = TimeSpan.FromSeconds(2);
-        Console.WriteLine($"Starting script: {Name} in {startDelay.TotalSeconds} seconds...");
+        Logger.LogInformation("Starting script: {ScriptName} in {StartDelaySeconds} seconds...", Name, startDelay.TotalSeconds);
         await Task.Delay(startDelay, cancellationToken);
 
         if (_initialized == false)
         {
-            await InitializeAsync(context, cancellationToken);
+            await InitializeAsync(cancellationToken);
             _initialized = true;
         }
 
-        await RunAsync(context, cancellationToken); 
+        await RunAsync(cancellationToken); 
     }
 
 
-    protected abstract Task InitializeAsync(ScriptExecutionContext context, CancellationToken cancellationToken);
+    protected abstract Task InitializeAsync(CancellationToken cancellationToken);
 
-    protected abstract Task RunAsync(ScriptExecutionContext context, CancellationToken cancellationToken);
+    protected abstract Task RunAsync(CancellationToken cancellationToken);
     
     public abstract void Dispose();
 }

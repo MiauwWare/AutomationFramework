@@ -4,31 +4,41 @@ using System.Numerics;
 using AutomationFramework;
 using AutomationFramework.Extensions;
 using AutomationRunner.Scripting;
-using Microsoft.Extensions.Configuration;
+using AutomationRunner.Services;
+using Microsoft.Extensions.Logging;
 using OpenCvSharp;
 
 namespace AutomationRunner.Scripts;
 
 public sealed class VisionShadesCrafting : BaseScript
 {
+    public VisionShadesCrafting(
+        AutomationFramework.Cursor cursor,
+        AutomationFramework.Keyboard keyboard,
+        IAutomationVisionFactory visionFactory,
+        ILogger<VisionShadesCrafting> logger)
+        : base(logger)
+    {
+        _cursor = cursor;
+        _keyboard = keyboard;
+        _visionFactory = visionFactory;
+    }
+
     public override string Name => "vision-shades-crafting";
 
     public override string Description => "Uses vision to find the correct buttons for wrist crafting and clicks them.";
 
-    AutomationFramework.Cursor _cursor = new();
-    AutomationFramework.Keyboard _keyboard = new();
+    private readonly AutomationFramework.Cursor _cursor;
+    private readonly AutomationFramework.Keyboard _keyboard;
+    private readonly IAutomationVisionFactory _visionFactory;
     AutomationFramework.Vision _vision = null!;
 
     Dictionary<string, Mat> _templates = new Dictionary<string, Mat>();
 
 
-    protected override Task InitializeAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
+    protected override Task InitializeAsync(CancellationToken cancellationToken)
     {
-        _vision = new AutomationFramework.Vision(new AutomationFramework.Vision.Options
-        {
-            OcrLanguage = "eng",
-            OcrDataPath = context.Configuration.GetRequiredSection("OcrDataPath").Value!
-        });
+        _vision = _visionFactory.Create();
 
         // Load templates
         AcquireTemplates
@@ -63,7 +73,7 @@ public sealed class VisionShadesCrafting : BaseScript
         _vision.Dispose();
     }
 
-    protected override async Task RunAsync(ScriptExecutionContext context, CancellationToken cancellationToken)
+    protected override async Task RunAsync(CancellationToken cancellationToken)
     {
         var searchRegion = Screen.PrimaryScreen?.Bounds;
 
@@ -73,7 +83,7 @@ public sealed class VisionShadesCrafting : BaseScript
             var engineeringButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_ENGINEERING_BTN], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (engineeringButtonImageMatch is null)
             {
-                Console.WriteLine("Engineering button not found.");
+                Logger.LogWarning("Engineering button not found.");
                 return;
             }
 
@@ -89,11 +99,11 @@ public sealed class VisionShadesCrafting : BaseScript
             var maxButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAX_BTN], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (maxButtonImageMatch == null)
             {
-                Console.WriteLine("Max button not found.");
+                Logger.LogWarning("Max button not found.");
                 return;
             }
 
-            var maxButtonBounds = maxButtonImageMatch.ToGlobalBounds().Padd(0, 10);
+            var maxButtonBounds = maxButtonImageMatch.ToGlobalBounds();
             maxButtonBounds = maxButtonBounds.Translate(-3 * maxButtonBounds.Width, 0);
 
             var quantityInputRandomPoint = maxButtonBounds.GetRandomPointInBounds();
@@ -107,7 +117,7 @@ public sealed class VisionShadesCrafting : BaseScript
             var craftButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CRAFT_BTN], 0.8, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (craftButtonImageMatch == null)
             {
-                Console.WriteLine("Craft button not found.");
+                Logger.LogWarning("Craft button not found.");
                 return;
             }
 
@@ -123,7 +133,7 @@ public sealed class VisionShadesCrafting : BaseScript
             var tsmCloseButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN], 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (tsmCloseButtonImageMatch == null)
             {
-                Console.WriteLine("TSM close button not found.");
+                Logger.LogWarning("TSM close button not found.");
                 return;
             }
 
@@ -139,7 +149,7 @@ public sealed class VisionShadesCrafting : BaseScript
             var gildedTradersBrutosaurImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_GILDED_TRADERS_BRUTOSAUR_BTN], 0.60, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (gildedTradersBrutosaurImageMatch == null)
             {
-                Console.WriteLine("GildedTradersBrutosaur not found.");
+                Logger.LogWarning("GildedTradersBrutosaur not found.");
                 return;
             }
 
@@ -154,7 +164,7 @@ public sealed class VisionShadesCrafting : BaseScript
             var targetMailButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_TARGET_MAIL_NPC_BTN], 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (targetMailButtonImageMatch == null)
             {
-                Console.WriteLine("TargetMailButton not found.");
+                Logger.LogWarning("TargetMailButton not found.");
                 return;
             }
 
@@ -175,7 +185,7 @@ public sealed class VisionShadesCrafting : BaseScript
             var tsmMailboxGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAILBOX_GROUPS_BTN], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (tsmMailboxGroupsImageMatch == null)
             {
-                Console.WriteLine("Groups button not found.");
+                Logger.LogWarning("Groups button not found.");
                 return;
             }
 
@@ -190,7 +200,7 @@ public sealed class VisionShadesCrafting : BaseScript
             var tsmMailSelectedGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN], 0.50, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (tsmMailSelectedGroupsImageMatch == null)
             {
-                Console.WriteLine("Mail Selected Groups button not found.");
+                Logger.LogWarning("Mail Selected Groups button not found.");
                 return;
             }
 

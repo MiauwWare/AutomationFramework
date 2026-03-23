@@ -1,0 +1,26 @@
+using AutomationFramework;
+using Microsoft.Extensions.Configuration;
+using OpenCvSharp;
+
+namespace AutomationRunner.Services;
+
+public sealed class AutomationVisionFactory : IAutomationVisionFactory
+{
+    private readonly string _ocrDataPath;
+
+    public AutomationVisionFactory(IConfiguration configuration)
+    {
+        _ocrDataPath = configuration.GetRequiredSection("OcrDataPath").Value
+            ?? throw new InvalidOperationException("OcrDataPath must be configured.");
+    }
+
+    public Vision Create(TemplateMatchModes templateMatchMode = TemplateMatchModes.CCoeffNormed)
+    {
+        return new Vision(new Vision.Options
+        {
+            OcrLanguage = "eng",
+            OcrDataPath = _ocrDataPath,
+            TemplateMatchMode = templateMatchMode
+        });
+    }
+}
