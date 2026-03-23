@@ -20,6 +20,7 @@ public sealed class VisionDisenchanting : BaseScript
         _cursor = cursor;
         _keyboard = keyboard;
         _visionFactory = visionFactory;
+
     }
 
     public override string Name => "vision-disenchanting";
@@ -27,17 +28,18 @@ public sealed class VisionDisenchanting : BaseScript
     public override string Description => "Disenchants and opens mailbox";
 
     private readonly AutomationFramework.Cursor _cursor;
-    private AutomationFramework.Vision _vision = null!;
-    private readonly AutomationFramework.Keyboard _keyboard;
+    private Vision _vision = null!;
+    private readonly Keyboard _keyboard;
     private readonly IAutomationVisionFactory _visionFactory;
 
-    private Dictionary<string, Mat> _templates = new Dictionary<string, Mat>();
+    private Dictionary<string, VisionTemplateLease> _templateLeases = new Dictionary<string, VisionTemplateLease>();
 
     protected override Task InitializeAsync(CancellationToken cancellationToken)
     {
         _vision = _visionFactory.Create();
 
-        AcquireTemplates
+        
+        _templateLeases = _vision.AcquireTemplateLeases
         (
             VisionTemplateFileNames.TSM_OPEN_ALL_MAIL,
             VisionTemplateFileNames.AB_TSM_DESTROY_BTN,
@@ -50,16 +52,12 @@ public sealed class VisionDisenchanting : BaseScript
     
     public override void Dispose()
     {
-        if (_vision is null)
-        {
-            return;
-        }
-
         // Release templates
-        foreach (var templateFileName in _templates.Keys)
+        foreach (var templateLease in _templateLeases.Values)
         {
-            _vision.ReleaseTemplate(templateFileName);
+            templateLease.Dispose();
         }
+        _templateLeases.Clear();
 
         // Dispose vision
         _vision.Dispose();
@@ -82,9 +80,9 @@ public sealed class VisionDisenchanting : BaseScript
                 await Task.Delay(TimeSpan.FromMilliseconds(500).ApplyRandomFactor(), cancellationToken);
 
             
-                if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL], bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
+                if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL].TemplateMat, bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
                 {
-                    Logger.LogWarning("Open all mail button not found.");
+                    _logger.LogWarning("Open all mail button not found.");
                     break;
                 }
         
@@ -93,9 +91,9 @@ public sealed class VisionDisenchanting : BaseScript
 
 
                 //close mailbox by pressing the close button
-                if (await FindAndClickImageTemplateAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN], (bounds) => bounds.Scale(0.5f), cancellationToken: cancellationToken) == false)
+                if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_CLOSE_BTN].TemplateMat, (bounds) => bounds.Scale(0.5f), cancellationToken: cancellationToken) == false)
                 {
-                    Logger.LogWarning("TSM close button not found.");
+                    _logger.LogWarning("TSM close button not found.");
                     break;
                 }
             }
@@ -130,17 +128,6 @@ public sealed class VisionDisenchanting : BaseScript
             }
         }
     }
-
-    private void AcquireTemplates(params string[] filenames)
-    {
-        ArgumentNullException.ThrowIfNull(filenames);
-
-        foreach (var filename in filenames)
-        {
-            _templates[filename] = _vision.AcquireTemplate(filename);
-        }
-    }
-
 
     private async Task<bool> FindAndClickImageTemplateAsync(Mat template, Func<Rectangle, Rectangle>? boundsManipulations = null, float confidence = 0.7f, CancellationToken cancellationToken = default)
     {

@@ -6,21 +6,21 @@ public abstract class BaseScript : IAutomationScript
 {
     protected BaseScript(ILogger logger)
     {
-        Logger = logger;
+        _logger = logger;
     }
 
     public abstract string Name { get; }
 
     public abstract string Description { get; }
 
-    protected ILogger Logger { get; }
+    protected readonly ILogger _logger;
 
     private bool _initialized = false;
     
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         TimeSpan startDelay = TimeSpan.FromSeconds(2);
-        Logger.LogInformation("Starting script: {ScriptName} in {StartDelaySeconds} seconds...", Name, startDelay.TotalSeconds);
+        _logger.LogInformation("Starting script: {ScriptName} in {StartDelaySeconds} seconds...", Name, startDelay.TotalSeconds);
         await Task.Delay(startDelay, cancellationToken);
 
         if (_initialized == false)

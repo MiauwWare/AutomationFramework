@@ -1,5 +1,6 @@
 ﻿using AutomationRunner.Scripting;
 using AutomationRunner.Services;
+using AutomationFramework;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -198,7 +199,8 @@ internal static class Program
             });
 
         builder.Services.AddTransient<AutomationFramework.Cursor>();
-        builder.Services.AddTransient<AutomationFramework.Keyboard>();
+        builder.Services.AddTransient<Keyboard>();
+        builder.Services.AddSingleton<IVisionTemplateResourceManager, VisionTemplateResourceManager>();
         builder.Services.AddSingleton<IAutomationVisionFactory, AutomationVisionFactory>();
         builder.Services.AddDiscoveredScripts();
 

@@ -33,7 +33,7 @@ public sealed class VisionShadesCrafting : BaseScript
     private readonly IAutomationVisionFactory _visionFactory;
     AutomationFramework.Vision _vision = null!;
 
-    Dictionary<string, Mat> _templates = new Dictionary<string, Mat>();
+    private Dictionary<string, VisionTemplateLease> _templates = new Dictionary<string, VisionTemplateLease>();
 
 
     protected override Task InitializeAsync(CancellationToken cancellationToken)
@@ -64,10 +64,11 @@ public sealed class VisionShadesCrafting : BaseScript
         }
 
         // Release templates
-        foreach (var templateFileName in _templates.Keys)
+        foreach (var templateLease in _templates.Values)
         {
-            _vision.ReleaseTemplate(templateFileName);
+            templateLease.Dispose();
         }
+        _templates.Clear();
 
         // Dispose vision
         _vision.Dispose();
@@ -80,10 +81,10 @@ public sealed class VisionShadesCrafting : BaseScript
         while (cancellationToken.IsCancellationRequested == false)
         {
             // Open crafting window
-            var engineeringButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_ENGINEERING_BTN], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var engineeringButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_ENGINEERING_BTN].TemplateMat, 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (engineeringButtonImageMatch is null)
             {
-                Logger.LogWarning("Engineering button not found.");
+                _logger.LogWarning("Engineering button not found.");
                 return;
             }
 
@@ -96,10 +97,10 @@ public sealed class VisionShadesCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(Random.Shared.NextFloat(2, 3)), cancellationToken);
 
             // Click TSM max button
-            var maxButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAX_BTN], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var maxButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAX_BTN].TemplateMat, 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (maxButtonImageMatch == null)
             {
-                Logger.LogWarning("Max button not found.");
+                _logger.LogWarning("Max button not found.");
                 return;
             }
 
@@ -114,10 +115,10 @@ public sealed class VisionShadesCrafting : BaseScript
             await _keyboard.TypeTextAsync("200", cancellationToken: cancellationToken);
 
             // Click TSM craft button
-            var craftButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CRAFT_BTN], 0.8, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var craftButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CRAFT_BTN].TemplateMat, 0.8, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (craftButtonImageMatch == null)
             {
-                Logger.LogWarning("Craft button not found.");
+                _logger.LogWarning("Craft button not found.");
                 return;
             }
 
@@ -130,10 +131,10 @@ public sealed class VisionShadesCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(175).ApplyRandomFactor(0.9, 1), cancellationToken);
 
             // Click TSM close button
-            var tsmCloseButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN], 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var tsmCloseButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN].TemplateMat, 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (tsmCloseButtonImageMatch == null)
             {
-                Logger.LogWarning("TSM close button not found.");
+                _logger.LogWarning("TSM close button not found.");
                 return;
             }
 
@@ -146,10 +147,10 @@ public sealed class VisionShadesCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
 
             // mount up on the gilded brutosaur
-            var gildedTradersBrutosaurImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_GILDED_TRADERS_BRUTOSAUR_BTN], 0.60, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var gildedTradersBrutosaurImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_GILDED_TRADERS_BRUTOSAUR_BTN].TemplateMat, 0.60, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (gildedTradersBrutosaurImageMatch == null)
             {
-                Logger.LogWarning("GildedTradersBrutosaur not found.");
+                _logger.LogWarning("GildedTradersBrutosaur not found.");
                 return;
             }
 
@@ -161,10 +162,10 @@ public sealed class VisionShadesCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(3).ApplyRandomFactor(0.8, 1.2), cancellationToken);
 
             // target the mail NPC via macro
-            var targetMailButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_TARGET_MAIL_NPC_BTN], 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var targetMailButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_TARGET_MAIL_NPC_BTN].TemplateMat, 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (targetMailButtonImageMatch == null)
             {
-                Logger.LogWarning("TargetMailButton not found.");
+                _logger.LogWarning("TargetMailButton not found.");
                 return;
             }
 
@@ -182,10 +183,10 @@ public sealed class VisionShadesCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken);
 
             // click the TSM mailbox groups button
-            var tsmMailboxGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAILBOX_GROUPS_BTN], 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var tsmMailboxGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAILBOX_GROUPS_BTN].TemplateMat, 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (tsmMailboxGroupsImageMatch == null)
             {
-                Logger.LogWarning("Groups button not found.");
+                _logger.LogWarning("Groups button not found.");
                 return;
             }
 
@@ -197,10 +198,10 @@ public sealed class VisionShadesCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(1));
 
             // click the TSM mail selected groups button
-            var tsmMailSelectedGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN], 0.50, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var tsmMailSelectedGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN].TemplateMat, 0.50, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (tsmMailSelectedGroupsImageMatch == null)
             {
-                Logger.LogWarning("Mail Selected Groups button not found.");
+                _logger.LogWarning("Mail Selected Groups button not found.");
                 return;
             }
 
@@ -219,7 +220,7 @@ public sealed class VisionShadesCrafting : BaseScript
 
         foreach (var filename in filenames)
         {
-            _templates[filename] = _vision.AcquireTemplate(filename);
+            _templates[filename] = _vision.AcquireTemplateLease(filename);
         }
     }
 }

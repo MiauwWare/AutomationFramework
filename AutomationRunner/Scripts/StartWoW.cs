@@ -37,7 +37,7 @@ public sealed class StartWoW : BaseScript
         string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         string shortcutPath = Path.Combine(desktop, "WoW.lnk");
         
-        Logger.LogInformation("Starting WoW from shortcut: {ShortcutPath}", shortcutPath);
+        _logger.LogInformation("Starting WoW from shortcut: {ShortcutPath}", shortcutPath);
 
         var wowProcess = Process.Start(new ProcessStartInfo
         {
@@ -57,7 +57,7 @@ public sealed class StartWoW : BaseScript
         if (WinWindowManager.GetForegroundWindowHandle() != wowProcess.Handle)
         {
             WinWindowManager.FocusWindow(wowProcess.Handle);
-            Logger.LogInformation("WoW window focused successfully.");
+            _logger.LogInformation("WoW window focused successfully.");
         }
     }
 }

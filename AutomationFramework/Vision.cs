@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.Runtime.InteropServices;
+using AutomationFramework.Windows;
 using OpenCvSharp;
+using OpenCvSharp.Internal;
 using Tesseract;
 
 namespace AutomationFramework;
@@ -68,14 +70,19 @@ public sealed class Vision : IDisposable
     private TesseractEngine? _ocrEngine;
     private bool _disposed;
 
+    // services
+    private readonly IVisionTemplateResourceManager _templateResourceManager;
+
     /// <summary>
     /// Creates a new vision helper with optional custom settings.
     /// </summary>
     /// <param name="options">Optional vision settings. Defaults are used when omitted.</param>
-    public Vision(Options? options = null)
+    public Vision(IVisionTemplateResourceManager templateResourceManager, Options? options = null)
     {
         _options = options ?? new Options();
         _options.Validate();
+
+        _templateResourceManager = templateResourceManager;
     }
 
     /// <summary>
@@ -128,16 +135,28 @@ public sealed class Vision : IDisposable
     }
 
 
-    public Mat AcquireTemplate(string templateFileName)
+    public Dictionary<string, VisionTemplateLease> AcquireTemplateLeases(params string[] templateFileNames)
     {
-        var templateFilePath = Path.Combine(_options.TemplatePath, templateFileName);
-        return VisionTemplateResourceManager.Acquire(templateFilePath);
-    }
+        ArgumentNullException.ThrowIfNull(templateFileNames);
 
-    public void ReleaseTemplate(string templateFileName)
+        var templateLeases = new Dictionary<string, VisionTemplateLease>(templateFileNames.Length);
+
+        foreach (var templateFileName in templateFileNames)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(templateFileName);
+
+            var templateFilePath = Path.Combine(_options.TemplatePath, templateFileName);
+            templateLeases[templateFileName] = _templateResourceManager.Acquire(templateFilePath);
+        }
+
+        return templateLeases;
+    }
+    
+    public VisionTemplateLease AcquireTemplateLease(string templateFileName)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateFileName);
         var templateFilePath = Path.Combine(_options.TemplatePath, templateFileName);
-        VisionTemplateResourceManager.Release(templateFilePath);
+        return _templateResourceManager.Acquire(templateFilePath);
     }
 
     /// <summary>
@@ -180,16 +199,10 @@ public sealed class Vision : IDisposable
             throw new FileNotFoundException("Template image was not found.", templateImagePath);
         }
 
-        var templateMat = VisionTemplateResourceManager.Acquire(templateImagePath);
+        using var templateLease = _templateResourceManager.Acquire(templateImagePath);
+        var templateMat = templateLease.TemplateMat;
        
-        try
-        {
-            return await FindImageAsync(templateMat, minConfidence, searchRegion, scaleStep, maxScale, minScale, colorTolerance, cancellationToken);
-        }
-        finally
-        {
-            VisionTemplateResourceManager.Release(templateImagePath);
-        }
+        return await FindImageAsync(templateMat, minConfidence, searchRegion, scaleStep, maxScale, minScale, colorTolerance, cancellationToken);
     }
 
     
@@ -635,10 +648,7 @@ public sealed class Vision : IDisposable
             return selectedRegion;
         }
 
-        var left = GetSystemMetrics(SystemMetric.XVirtualScreen);
-        var top = GetSystemMetrics(SystemMetric.YVirtualScreen);
-        var width = GetSystemMetrics(SystemMetric.CxVirtualScreen);
-        var height = GetSystemMetrics(SystemMetric.CyVirtualScreen);
+        var (left, top, width, height) = WinSystemMetrics.GetVirtualScreenBounds();
 
         if (width <= 0 || height <= 0)
         {
@@ -689,17 +699,6 @@ public sealed class Vision : IDisposable
         // Release unmanaged OCR resources.
         _ocrEngine?.Dispose();
         _disposed = true;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern int GetSystemMetrics(SystemMetric systemMetric);
-
-    private enum SystemMetric
-    {
-        XVirtualScreen = 76,
-        YVirtualScreen = 77,
-        CxVirtualScreen = 78,
-        CyVirtualScreen = 79
     }
 }
 
