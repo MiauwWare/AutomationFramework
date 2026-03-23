@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
 
-namespace AutomationFramework;
+namespace AutomationFramework.Windows;
 
-public static class InputNative
+public static class WinInput
 {
     private const uint InputMouse = 0;
     private const uint InputKeyboard = 1;
@@ -20,18 +20,10 @@ public static class InputNative
     private const uint KeyEventFKeyUp = 0x0002;
     private const uint KeyEventFUnicode = 0x0004;
 
-    private const int SmXVirtualScreen = 76;
-    private const int SmYVirtualScreen = 77;
-    private const int SmCxVirtualScreen = 78;
-    private const int SmCyVirtualScreen = 79;
-
     internal static void SendMouseAbsolute(int x, int y)
     {
         // Framework-standard coordinate system: full virtual desktop.
-        var left = GetSystemMetrics(SmXVirtualScreen);
-        var top = GetSystemMetrics(SmYVirtualScreen);
-        var width = Math.Max(1, GetSystemMetrics(SmCxVirtualScreen));
-        var height = Math.Max(1, GetSystemMetrics(SmCyVirtualScreen));
+        var (left, top, width, height) = WinSystemMetrics.GetVirtualScreenBounds();
 
         var normalizedX = NormalizeAbsoluteCoordinate(x, left, width);
         var normalizedY = NormalizeAbsoluteCoordinate(y, top, height);
@@ -205,9 +197,6 @@ public static class InputNative
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int SendInput(uint cInputs, [MarshalAs(UnmanagedType.LPArray), In] Input[] pInputs, int cbSize);
-
-    [DllImport("user32.dll")]
-    private static extern int GetSystemMetrics(int nIndex);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Input
