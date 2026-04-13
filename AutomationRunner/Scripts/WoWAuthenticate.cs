@@ -5,15 +5,17 @@ using AutomationFramework;
 using AutomationFramework.Extensions;
 using AutomationRunner.Scripting;
 using AutomationRunner.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AutomationRunner.Scripts;
 
-public class WoWLogIn : BaseScript
+public class WoWAuthenticate : BaseScript
 {
-    public WoWLogIn
+    public WoWAuthenticate
     (
-        ILogger<WoWLogIn> logger, 
+        ILogger<WoWAuthenticate> logger, 
+        IConfiguration config,
         IAutomationVisionFactory visionFactory,
         AutomationFramework.Cursor cursor,
         Keyboard keyboard
@@ -23,15 +25,17 @@ public class WoWLogIn : BaseScript
         _visionFactory = visionFactory;
         _cursor = cursor;
         _keyboard = keyboard;
+        _config = config;
     }
 
-    public override string Name => "wow-login";
+    public override string Name => "wow-authenticate";
 
-    public override string Description => "Log into wow with credentials stored in the appsettings.";
+    public override string Description => "Authenticate into wow with credentials stored in the appsettings.";
 
     private readonly Keyboard _keyboard;
     private readonly AutomationFramework.Cursor _cursor;
     private readonly IAutomationVisionFactory _visionFactory;
+    private readonly IConfiguration _config;
     private Vision? _vision = null;
 
     private Dictionary<string, VisionTemplateLease> _templateLeases = null!;
@@ -99,9 +103,11 @@ public class WoWLogIn : BaseScript
 
         await _cursor.ClickAsync();
 
-        await _keyboard.TypeTextAsync("Password");
+        //get password from config
+        var password = _config.GetRequiredSection("WoWPassword").Get<string>()!;
+        
+        await _keyboard.TypeTextAsync(password);
         await _keyboard.PressKeyAsync(VirtualKey.Enter);
-
 
     }
 
