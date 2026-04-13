@@ -76,14 +76,14 @@ public sealed class VisionDisenchanting : BaseScript
             while (cancellationToken.IsCancellationRequested == false)
             {
                 //wait for disenchanting to free up bag space
-                await Task.Delay(TimeSpan.FromSeconds(250).ApplyRandomFactor());
+                await Task.Delay(TimeSpan.FromSeconds(250).ApplyRandomFactor(), cancellationToken);
 
                 // Open mailbox
                 await _keyboard.PressKeyAsync(AutomationFramework.VirtualKey.F, cancellationToken: cancellationToken);
                 await Task.Delay(TimeSpan.FromMilliseconds(500).ApplyRandomFactor(), cancellationToken);
 
             
-                if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL].TemplateMat, bounds => bounds.Padd(40, 2), cancellationToken: cancellationToken) == false)
+                if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL].TemplateMat, bounds => bounds.Scale(2, 1), cancellationToken: cancellationToken) == false)
                 {
                     _logger.LogWarning("Open all mail button not found.");
                     break;
@@ -123,7 +123,7 @@ public sealed class VisionDisenchanting : BaseScript
             await _keyboard.PressKeyAsync(AutomationFramework.VirtualKey.D9, cancellationToken: cancellationToken);
 
             // Wait a random time between key presses to mimic human behavior.
-            var delay = TimeSpan.FromSeconds(2.2).ApplyRandomFactor(1f, 1.2f);
+            var delay = TimeSpan.FromSeconds(3).ApplyRandomFactor(1f, 1.2f);
 
             if (delay > TimeSpan.Zero)
             {
