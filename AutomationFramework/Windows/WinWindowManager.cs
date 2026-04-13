@@ -66,7 +66,7 @@ public static class WinWindowManager
     [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindWindowW")]
     private static extern IntPtr FindWindowNative(string? lpClassName, string? lpWindowName);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", EntryPoint = "ShowWindow")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ShowWindowNative(IntPtr hWnd, int nCmdShow);
 
