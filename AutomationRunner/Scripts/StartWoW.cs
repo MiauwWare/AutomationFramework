@@ -1,5 +1,6 @@
 
 using System.Diagnostics;
+using AutomationFramework;
 using AutomationFramework.Windows;
 using AutomationRunner.Scripting;
 using Microsoft.Extensions.Logging;
@@ -51,14 +52,27 @@ public sealed class StartWoW : BaseScript
         }
 
         //give it some time to start up
-        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
 
+        // Refresh so .NET re-reads the process state and populates MainWindowHandle.
+        wowProcess.Refresh();
+        var windowHandle = wowProcess.MainWindowHandle;
 
-        if (WinWindowManager.GetForegroundWindowHandle() != wowProcess.Handle)
+        if (windowHandle == IntPtr.Zero)
         {
-            WinWindowManager.FocusWindow(wowProcess.Handle);
+            throw new InvalidOperationException("WoW process started but no window handle was found after waiting.");
+        }
+
+        if (WinWindowManager.GetForegroundWindowHandle() != windowHandle)
+        {
+            WinWindowManager.FocusWindow(windowHandle);
             _logger.LogInformation("WoW window focused successfully.");
         }
+
+
+        _logger.LogInformation("Maximizing Main WoW Window successfully.");
+        //maximize the window
+        WinWindowManager.ShowWindow(windowHandle, WindowShowCommand.ShowMaximized);
     }
 }
 
