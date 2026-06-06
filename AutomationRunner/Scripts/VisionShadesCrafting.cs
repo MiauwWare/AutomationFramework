@@ -227,6 +227,9 @@ public sealed class VisionShadesCrafting : BaseScript
             var newPos = searchRegion.Center() + new Vector2(Random.Shared.Next(-100, 100), Random.Shared.Next(-100, 100));
             await _cursor.MoveToAsync(newPos);
 
+            //press "R" to clear cursor
+            await _keyboard.PressKeyAsync(VirtualKey.R, cancellationToken: cancellationToken);
+
             // find the engineering AB button
             var engineeringButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_ENGINEERING_BTN].TemplateMat, 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (engineeringButtonImageMatch is null)
@@ -280,6 +283,9 @@ public sealed class VisionShadesCrafting : BaseScript
             var newPos = searchRegion.Center() + new Vector2(Random.Shared.Next(-100, 100), Random.Shared.Next(-100, 100));
             await _cursor.MoveToAsync(newPos);
 
+            //clear cursor
+            await _keyboard.PressKeyAsync(VirtualKey.R, cancellationToken: cancellationToken);
+
             //find the gilded brutosaur on the action bar
             var mountAbImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_GILDED_TRADERS_BRUTOSAUR_BTN].TemplateMat, 0.60, cancellationToken: cancellationToken, searchRegion: abSearchRegion);
             if (mountAbImageMatch is null)
@@ -321,6 +327,10 @@ public sealed class VisionShadesCrafting : BaseScript
             // move mouse to center-ish with a random offset between -100 to 100
             var newPos = searchRegion.Center() + new Vector2(Random.Shared.Next(-100, 100), Random.Shared.Next(-100, 100));
             await _cursor.MoveToAsync(newPos);
+
+            //clear cursor
+            await _keyboard.PressKeyAsync(VirtualKey.R, cancellationToken: cancellationToken);
+
 
             // find the interact with mail npc AB button
             var targetMailButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.AB_TARGET_MAIL_NPC_BTN].TemplateMat, 0.7, cancellationToken: cancellationToken, searchRegion: searchRegion);

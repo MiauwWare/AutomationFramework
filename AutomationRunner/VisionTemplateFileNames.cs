@@ -12,6 +12,7 @@ public static class VisionTemplateFileNames
     public const string TSM_DESTROY_NEXT_BTN = "tsm_destroy_next_btn.png";
     public const string TSM_MAIL_SELECTED_GROUPS_BTN = "tsm_mail_selected_groups_btn.png";
     public const string TSM_MAILBOX_GROUPS_BTN = "tsm_mailbox_groups_btn.png";
+    public const string TSM_MAILBOX_INBOX_BTN = "tsm_mailbox_inbox_btn.png";
     public const string TSM_MAX_BTN = "tsm_max_btn.png";
     public const string TSM_ENGINEERING_WINDOW = "tsm_engineering_window.png";
     public const string TSM_MAIL_WINDOW = "tsm_mail_window.png";
