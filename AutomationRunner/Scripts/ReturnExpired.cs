@@ -89,7 +89,7 @@ public sealed class ReturnExpired : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(20));
 
             // click on groups
-            if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_MAILBOX_GROUPS_BTN].TemplateMat, null, cancellationToken: cancellationToken) == false)
+            if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_MAILBOX_GROUPS_BTN].TemplateMat, bounds => bounds.Scale(0.5f, 0.5f), cancellationToken: cancellationToken) == false)
             {
                 _logger.LogWarning("TSM_MAILBOX_GROUPS_BTN not found.");
                 break;
@@ -97,7 +97,7 @@ public sealed class ReturnExpired : BaseScript
 
 
             // mail selected groups
-            if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN].TemplateMat, null, cancellationToken: cancellationToken) == false)
+            if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN].TemplateMat, bounds => bounds.Scale(0.5f, 0.5f), cancellationToken: cancellationToken) == false)
             {
                 _logger.LogWarning("TSM_MAIL_SELECTED_GROUPS_BTN not found.");
                 break;
@@ -107,7 +107,7 @@ public sealed class ReturnExpired : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(12));
 
             // go back to inbox tab
-            if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_MAILBOX_INBOX_BTN].TemplateMat, null, cancellationToken: cancellationToken) == false)
+            if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_MAILBOX_INBOX_BTN].TemplateMat, bounds => bounds.Scale(0.5f, 0.5f), cancellationToken: cancellationToken) == false)
             {
                 _logger.LogWarning("TSM_MAIL_SELECTED_GROUPS_BTN not found.");
                 break;
