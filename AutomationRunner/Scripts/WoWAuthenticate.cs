@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using AutomationFramework;
@@ -62,7 +63,8 @@ public class WoWAuthenticate : BaseScript
         
         _templateLeases = _vision.AcquireTemplateLeases(
             VisionTemplateFileNames.MAIN_MENU_PASSWORD_TEXT,
-            VisionTemplateFileNames.MAIN_MENU_BUTTONS
+            VisionTemplateFileNames.MAIN_MENU_BUTTONS,
+            VisionTemplateFileNames.CHARACTER_SELECT_CREATE_DELETE_RESTORE_BUTTONS
         );
 
 
@@ -81,11 +83,7 @@ public class WoWAuthenticate : BaseScript
             throw new InvalidOperationException("Template leases are not initialized.");
         }
         
-        bool foundMainMenuButtons = await AttemptToFindMainMenuButtons(cancellationToken);
-        if (foundMainMenuButtons == false)
-        {
-            throw new InvalidOperationException("Failed to find the main menu buttons after multiple attempts. Is WoW running and visible?");
-        }
+        await ThrowIfMainMenuButtonsNotFoundAsync(cancellationToken);
 
         // find password text
         var passwordMatch = await _vision.FindImageAsync(_templateLeases[VisionTemplateFileNames.MAIN_MENU_PASSWORD_TEXT].TemplateMat, 0.6);
@@ -103,37 +101,78 @@ public class WoWAuthenticate : BaseScript
 
         await _cursor.ClickAsync();
 
+        //clear all current text
+        await _keyboard.PressChordAsync([VirtualKey.Control, VirtualKey.Backspace], cancellationToken: cancellationToken);
+        await Task.Delay(500);
+
         //get password from config
         var password = _config.GetRequiredSection("WoWPassword").Get<string>()!;
         
+        //type in the password
         await _keyboard.TypeTextAsync(password);
+
+        //press enter to log-in
         await _keyboard.PressKeyAsync(VirtualKey.Enter);
 
+        //wait for a bit to let the login process complete
+        await Task.Delay(TimeSpan.FromSeconds(10));
+
+
+        //confirm authentication was successful by checking for the character select menu buttons
+        await ThrowIfCharacterSelectButtonsNotFoundAsync(cancellationToken);
     }
 
 
-    private async Task<bool> AttemptToFindMainMenuButtons(CancellationToken cancellationToken, int maxAttempts = 3 )
+    private async Task ThrowIfMainMenuButtonsNotFoundAsync(CancellationToken cancellationToken, int maxAttempts = 3)
     {
         ArgumentNullException.ThrowIfNull(_vision);
 
-        for (var attempt = 1; attempt <= maxAttempts; ++attempt)
-        {
-            var mainMenuButtonsMatch = await _vision.FindImageAsync(
-                _templateLeases[VisionTemplateFileNames.MAIN_MENU_BUTTONS].TemplateMat,
-                0.6,
-                cancellationToken: cancellationToken);
-
-            if (mainMenuButtonsMatch != null)
+        await Retry.ExecuteAsync
+        (
+            async () =>
             {
-                return true;
-            }
+                var match = await _vision.FindImageAsync
+                (
+                    _templateLeases[VisionTemplateFileNames.MAIN_MENU_BUTTONS].TemplateMat,
+                    0.6,
+                    cancellationToken: cancellationToken
+                );
 
-            if (attempt < maxAttempts)
+                if (match == null)
+                {
+                    throw new InvalidOperationException("Failed to find the main menu buttons on the WoW login screen.");
+                }
+            },
+            maxAttempts,
+            TimeSpan.FromSeconds(5),
+            cancellationToken
+        );
+    }
+
+
+    private async Task ThrowIfCharacterSelectButtonsNotFoundAsync(CancellationToken cancellationToken, int maxAttempts = 3)
+    {
+        ArgumentNullException.ThrowIfNull(_vision);
+
+        await Retry.ExecuteAsync
+        (
+            async () =>
             {
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-            }
-        }
+                var match = await _vision.FindImageAsync
+                (
+                    _templateLeases[VisionTemplateFileNames.CHARACTER_SELECT_CREATE_DELETE_RESTORE_BUTTONS].TemplateMat,
+                    0.6,
+                    cancellationToken: cancellationToken
+                );
 
-        return false;
+                if (match == null)
+                {
+                    throw new InvalidOperationException("Failed to find the character select buttons on the WoW character selection screen. Authentication failed.");
+                }
+            },
+            maxAttempts,
+            TimeSpan.FromSeconds(5),
+            cancellationToken
+        );
     }
 }
