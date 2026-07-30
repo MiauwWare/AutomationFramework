@@ -22,4 +22,5 @@ public static class VisionTemplateFileNames
     public const string MAIN_MENU_PASSWORD_TEXT = "main_menu_password_text.png";
     public const string MAIN_MENU_BUTTONS = "main_menu_buttons.png";
     public const string CHARACTER_SELECT_ENTER_WORLD_BTN_ACTIVE = "character_select_enter_world_btn_active.png";
+    public const string CHARACTER_SELECT_CREATE_DELETE_RESTORE_BUTTONS = "character_select_create_delete_restore_buttons.png";
 }
