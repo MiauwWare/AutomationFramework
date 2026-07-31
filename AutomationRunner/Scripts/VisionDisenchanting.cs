@@ -41,10 +41,10 @@ public sealed class VisionDisenchanting : BaseScript
         
         _templateLeases = _vision.AcquireTemplateLeases
         (
-            VisionTemplateFileNames.TSM_OPEN_ALL_MAIL,
+            VisionTemplateFileNames.UI_TSM_OPEN_ALL_MAIL,
             VisionTemplateFileNames.AB_TSM_DESTROY_BTN,
-            VisionTemplateFileNames.TSM_DESTROY_NEXT_BTN,
-            VisionTemplateFileNames.TSM_CLOSE_BTN
+            VisionTemplateFileNames.UI_TSM_DESTROY_NEXT_BTN,
+            VisionTemplateFileNames.UI_TSM_CLOSE_BTN
         );
 
         return Task.CompletedTask;
@@ -83,7 +83,7 @@ public sealed class VisionDisenchanting : BaseScript
                 await Task.Delay(TimeSpan.FromMilliseconds(500).ApplyRandomFactor(), cancellationToken);
 
             
-                if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_OPEN_ALL_MAIL].TemplateMat, bounds => bounds.Scale(2, 1), cancellationToken: cancellationToken) == false)
+                if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.UI_TSM_OPEN_ALL_MAIL].TemplateMat, bounds => bounds.Scale(2, 1), cancellationToken: cancellationToken) == false)
                 {
                     _logger.LogWarning("Open all mail button not found.");
                     break;
@@ -94,7 +94,7 @@ public sealed class VisionDisenchanting : BaseScript
 
 
                 //close mailbox by pressing the close button
-                if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.TSM_CLOSE_BTN].TemplateMat, (bounds) => bounds.Scale(0.5f), cancellationToken: cancellationToken) == false)
+                if (await FindAndClickImageTemplateAsync(_templateLeases[VisionTemplateFileNames.UI_TSM_CLOSE_BTN].TemplateMat, (bounds) => bounds.Scale(0.5f), cancellationToken: cancellationToken) == false)
                 {
                     _logger.LogWarning("TSM close button not found.");
                     break;

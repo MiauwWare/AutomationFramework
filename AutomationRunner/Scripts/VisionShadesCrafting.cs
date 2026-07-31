@@ -45,15 +45,15 @@ public sealed class VisionShadesCrafting : BaseScript
         AcquireTemplates
         (
             VisionTemplateFileNames.AB_ENGINEERING_BTN,
-            VisionTemplateFileNames.TSM_ENGINEERING_WINDOW,
-            VisionTemplateFileNames.TSM_MAIL_WINDOW,
-            VisionTemplateFileNames.TSM_MAX_BTN,
-            VisionTemplateFileNames.TSM_CRAFT_BTN,
-            VisionTemplateFileNames.TSM_CLOSE_BTN,
+            VisionTemplateFileNames.UI_TSM_ENGINEERING_WINDOW,
+            VisionTemplateFileNames.UI_TSM_MAIL_WINDOW,
+            VisionTemplateFileNames.UI_TSM_MAX_BTN,
+            VisionTemplateFileNames.UI_TSM_CRAFT_BTN,
+            VisionTemplateFileNames.UI_TSM_CLOSE_BTN,
             VisionTemplateFileNames.AB_GILDED_TRADERS_BRUTOSAUR_BTN,
             VisionTemplateFileNames.AB_TARGET_MAIL_NPC_BTN,
-            VisionTemplateFileNames.TSM_MAILBOX_GROUPS_BTN,
-            VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN
+            VisionTemplateFileNames.UI_TSM_MAILBOX_GROUPS_BTN,
+            VisionTemplateFileNames.UI_TSM_MAIL_SELECTED_GROUPS_BTN
         );
 
         return Task.CompletedTask;
@@ -95,7 +95,7 @@ public sealed class VisionShadesCrafting : BaseScript
             // Click TSM max button
             var maxButtonImageMatch = await _vision.FindImageAsync
             (
-                _templates[VisionTemplateFileNames.TSM_MAX_BTN].TemplateMat,
+                _templates[VisionTemplateFileNames.UI_TSM_MAX_BTN].TemplateMat,
                 0.7, 
                 cancellationToken: cancellationToken, 
                 searchRegion: engineeringWindowBounds
@@ -118,7 +118,7 @@ public sealed class VisionShadesCrafting : BaseScript
             await _keyboard.TypeTextAsync("200", cancellationToken: cancellationToken);
 
             // Click TSM craft button
-            var craftButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CRAFT_BTN].TemplateMat, 0.8, cancellationToken: cancellationToken, searchRegion: engineeringWindowBounds);
+            var craftButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.UI_TSM_CRAFT_BTN].TemplateMat, 0.8, cancellationToken: cancellationToken, searchRegion: engineeringWindowBounds);
             if (craftButtonImageMatch == null)
             {
                 _logger.LogWarning("Craft button not found.");
@@ -134,7 +134,7 @@ public sealed class VisionShadesCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(150).ApplyRandomFactor(0.9, 1.1), cancellationToken);
 
             // Click TSM close button
-            var tsmCloseButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_CLOSE_BTN].TemplateMat, 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
+            var tsmCloseButtonImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.UI_TSM_CLOSE_BTN].TemplateMat, 0.70, cancellationToken: cancellationToken, searchRegion: searchRegion);
             if (tsmCloseButtonImageMatch == null)
             {
                 _logger.LogWarning("TSM close button not found.");
@@ -166,7 +166,7 @@ public sealed class VisionShadesCrafting : BaseScript
             var mailWindowBounds = mailWindowRes.Match.ToGlobalBounds();
 
             // click the TSM mailbox groups button
-            var tsmMailboxGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAILBOX_GROUPS_BTN].TemplateMat, 0.7, cancellationToken: cancellationToken, searchRegion: mailWindowBounds);
+            var tsmMailboxGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.UI_TSM_MAILBOX_GROUPS_BTN].TemplateMat, 0.7, cancellationToken: cancellationToken, searchRegion: mailWindowBounds);
             if (tsmMailboxGroupsImageMatch == null)
             {
                 _logger.LogWarning("Groups button not found.");
@@ -182,7 +182,7 @@ public sealed class VisionShadesCrafting : BaseScript
             await Task.Delay(TimeSpan.FromSeconds(2).ApplyRandomFactor());
 
             // click the TSM mail selected groups button
-            var tsmMailSelectedGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAIL_SELECTED_GROUPS_BTN].TemplateMat, 0.50, cancellationToken: cancellationToken, searchRegion: mailWindowBounds);
+            var tsmMailSelectedGroupsImageMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.UI_TSM_MAIL_SELECTED_GROUPS_BTN].TemplateMat, 0.50, cancellationToken: cancellationToken, searchRegion: mailWindowBounds);
             if (tsmMailSelectedGroupsImageMatch == null)
             {
                 _logger.LogWarning("Mail Selected Groups button not found.");
@@ -252,7 +252,7 @@ public sealed class VisionShadesCrafting : BaseScript
 
 
             // Check if the window is open and detected
-            engineeringWindowMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_ENGINEERING_WINDOW].TemplateMat, 0.5, searchRegion, cancellationToken: cancellationToken);
+            engineeringWindowMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.UI_TSM_ENGINEERING_WINDOW].TemplateMat, 0.5, searchRegion, cancellationToken: cancellationToken);
 
             if (engineeringWindowMatch is not null)
             {
@@ -359,7 +359,7 @@ public sealed class VisionShadesCrafting : BaseScript
 
 
             // Check if the window is open and detected
-            mailWindowMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.TSM_MAIL_WINDOW].TemplateMat, 0.5, searchRegion, cancellationToken: cancellationToken);
+            mailWindowMatch = await _vision.FindImageAsync(_templates[VisionTemplateFileNames.UI_TSM_MAIL_WINDOW].TemplateMat, 0.5, searchRegion, cancellationToken: cancellationToken);
 
             if (mailWindowMatch is not null)
             {

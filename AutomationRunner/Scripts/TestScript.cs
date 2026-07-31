@@ -43,8 +43,8 @@ public sealed class TestScript : BaseScript
         // Load templates
         AcquireTemplates
         (
-            VisionTemplateFileNames.TSM_ENGINEERING_WINDOW,
-            VisionTemplateFileNames.TSM_MAIL_WINDOW,
+            VisionTemplateFileNames.UI_TSM_ENGINEERING_WINDOW,
+            VisionTemplateFileNames.UI_TSM_MAIL_WINDOW,
             VisionTemplateFileNames.AB_GILDED_TRADERS_BRUTOSAUR_BTN
         );
 

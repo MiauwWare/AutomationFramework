@@ -52,7 +52,8 @@ public class SelectCharacter : BaseScript
         _vision = _visionFactory.Create();
         
         _templateLeases = _vision.AcquireTemplateLeases(
-            VisionTemplateFileNames.CHARACTER_SELECT_ENTER_WORLD_BTN_ACTIVE
+            VisionTemplateFileNames.CHARACTER_SELECT_ENTER_WORLD_BTN_ACTIVE,
+            VisionTemplateFileNames.UI_CHAT_BUBBLE_BUTTON
         );
 
 
@@ -71,42 +72,72 @@ public class SelectCharacter : BaseScript
             throw new InvalidOperationException("Template leases are not initialized.");
         }
         
-        _logger.LogInformation("Waiting for Enter World button to become active...");
-        bool ready = await WaitEnterWorldButtonEnabledAsync(cancellationToken);
+        // enter the world
+        await EnterWorldAsync(cancellationToken: cancellationToken);
 
-        if (ready == false)
-        {
-            throw new InvalidOperationException("Enter World button did not become active within the expected time.");
-        }
 
-        await _keyboard.PressKeyAsync(VirtualKey.Enter);
+        //wait until loading screen is finished
+        await WaitUntilLoadedInAsync(cancellationToken: cancellationToken);
 
-        _logger.LogInformation("Character Selection Complete.");
     }
 
 
-    private async Task<bool> WaitEnterWorldButtonEnabledAsync(CancellationToken cancellationToken, int maxAttempts = 10 )
+    private async Task EnterWorldAsync(CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(_vision);
+        ArgumentNullException.ThrowIfNull(_keyboard);
+
+        _logger.LogInformation("Entering World...");
+
+        await Retry.ExecuteAsync
+        (
+            async () =>
+            {
+                var match = await _vision.FindImageAsync
+                (
+                    _templateLeases[VisionTemplateFileNames.CHARACTER_SELECT_ENTER_WORLD_BTN_ACTIVE].TemplateMat,
+                    0.6,
+                    cancellationToken: cancellationToken
+                );
+
+                if (match == null)
+                {
+                    throw new InvalidOperationException("Failed to find the active Enter World button on the WoW character selection screen. Cannot proceed to enter world.");
+                }
+            },
+            maxAttempts: 3,
+            delay: TimeSpan.FromSeconds(5),
+            cancellationToken: cancellationToken
+        );
+
+        await _keyboard.PressKeyAsync(VirtualKey.Enter);
+    }
+
+    private async Task WaitUntilLoadedInAsync(CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(_vision);
 
-        for (var attempt = 1; attempt <= maxAttempts; ++attempt)
-        {
-            var enterWorldButtonMatch = await _vision.FindImageAsync(
-                _templateLeases[VisionTemplateFileNames.CHARACTER_SELECT_ENTER_WORLD_BTN_ACTIVE].TemplateMat,
-                0.6,
-                cancellationToken: cancellationToken);
-
-            if (enterWorldButtonMatch != null)
+        await Retry.ExecuteAsync
+        (
+            async () =>
             {
-                return true;
-            }
+                var match = await _vision.FindImageAsync
+                (
+                    _templateLeases[VisionTemplateFileNames.UI_CHAT_BUBBLE_BUTTON].TemplateMat,
+                    0.90,
+                    cancellationToken: cancellationToken
+                );
 
-            if (attempt < maxAttempts)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-            }
-        }
+                if (match == null)
+                {
+                    throw new InvalidOperationException("Failed to find the chat bubble button on the WoW screen. Player may not have loaded into the world yet.");
+                }
+            },
+            maxAttempts: 15,
+            delay: TimeSpan.FromSeconds(10),
+            cancellationToken: cancellationToken
+        );
 
-        return false;
+        _logger.LogInformation("Loading Screen Finished!");
     }
 }
