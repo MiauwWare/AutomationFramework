@@ -17,9 +17,11 @@ internal static class CursorPathMath
 		var displacement = end - start;
 
 		if (distance <= double.Epsilon)
-			return (start, end);
+        {
+            return (start, end);
+        }
 
-		var direction = Vector2.Normalize(displacement);
+        var direction = Vector2.Normalize(displacement);
 		var perpendicular = new Vector2(-direction.Y, direction.X);
 
 		var curve = (float)Math.Min(curvaturePixels, Math.Max(8.0, distance * 0.35));

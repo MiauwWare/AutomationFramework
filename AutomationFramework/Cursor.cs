@@ -80,9 +80,11 @@ public sealed class Cursor
 	public Vector2 GetCurrentPosition()
 	{
 		if (!GetCursorPos(out var point))
-			throw new InvalidOperationException("Failed to read the current cursor position.");
+        {
+            throw new InvalidOperationException("Failed to read the current cursor position.");
+        }
 
-		return new Vector2(point.X, point.Y);
+        return new Vector2(point.X, point.Y);
 	}
 
 	/// <summary>
@@ -94,15 +96,19 @@ public sealed class Cursor
 		CancellationToken cancellationToken = default)
 	{
 		if (speedPixelsPerSecond <= 0 || float.IsNaN(speedPixelsPerSecond) || float.IsInfinity(speedPixelsPerSecond))
-			throw new ArgumentOutOfRangeException(nameof(speedPixelsPerSecond), "Speed must be a finite value greater than zero.");
+        {
+            throw new ArgumentOutOfRangeException(nameof(speedPixelsPerSecond), "Speed must be a finite value greater than zero.");
+        }
 
-		var startPos = GetCurrentPosition();
+        var startPos = GetCurrentPosition();
 		var distance = Vector2.Distance(startPos, targetPos);
 
 		if (distance < float.Epsilon)
-			return;
+        {
+            return;
+        }
 
-		var durationTicks = Math.Max(
+        var durationTicks = Math.Max(
 			1L,
 			(long)Math.Round(TimeSpan.TicksPerSecond * (distance / speedPixelsPerSecond)));
 
@@ -119,23 +125,28 @@ public sealed class Cursor
 	{
 		// Basic input validation.
 		if (duration <= TimeSpan.Zero)
-			throw new ArgumentOutOfRangeException(nameof(duration), "Duration must be greater than zero.");
+        {
+            throw new ArgumentOutOfRangeException(nameof(duration), "Duration must be greater than zero.");
+        }
 
-		// Capture the current cursor position as the movement start point.
-		if (!GetCursorPos(out var startPoint))
-			throw new InvalidOperationException("Failed to read the current cursor position.");
+        // Capture the current cursor position as the movement start point.
+        if (!GetCursorPos(out var startPoint))
+        {
+            throw new InvalidOperationException("Failed to read the current cursor position.");
+        }
 
-		var adjustedDuration = TimespanExtensions.ApplyRandomFactor(duration, _options.MinSpeedFactor, _options.MaxSpeedFactor);
+        var adjustedDuration = TimespanExtensions.ApplyRandomFactor(duration, _options.MinSpeedFactor, _options.MaxSpeedFactor);
 		var startPos = new Vector2(startPoint.X, startPoint.Y);
 
 		var distance = Vector2.Distance(startPos, targetPos);
 
 		// If the target is effectively the same as the start, skip movement but still respect the duration.
 		if (distance < float.Epsilon)
-			return;
+        {
+            return;
+        }
 
-		
-		var steps = (int)Math.Clamp(adjustedDuration.TotalMilliseconds / 16, _options.MinMoveSteps, _options.MaxMoveSteps);
+        var steps = (int)Math.Clamp(adjustedDuration.TotalMilliseconds / 16, _options.MinMoveSteps, _options.MaxMoveSteps);
 
 		var controlPoints = CursorPathMath.CreateControlPoints(startPos, targetPos, distance, _options.MovePathCurvaturePixels);
 		

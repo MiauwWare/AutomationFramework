@@ -1,178 +1,138 @@
-using System;
-using System.ComponentModel;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
 using AutomationFramework;
 using AutomationFramework.Extensions;
+using AutomationFramework.Templates;
+using AutomationFramework.VisionModels;
 using AutomationRunner.Scripting;
-using AutomationRunner.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AutomationRunner.Scripts;
 
-public class WoWAuthenticate : BaseScript
+/// <summary>Signs in to World of Warcraft using template matching and the configured password.</summary>
+public sealed class WoWAuthenticate : BaseScript
 {
-    public WoWAuthenticate
-    (
-        ILogger<WoWAuthenticate> logger, 
-        IConfiguration config,
-        IAutomationVisionFactory visionFactory,
+    private const double LoginConfidence = .3;
+    private static readonly VisionSearchOptions LoginSearch = new() { MinimumConfidence = LoginConfidence };
+
+    private readonly IVisionTemplateResourceManager _templateManager;
+    private readonly AutomationFramework.Cursor _cursor;
+    private readonly Keyboard _keyboard;
+    private readonly IConfiguration _configuration;
+    private Vision? _vision;
+    private Dictionary<string, VisionTemplateLease>? _templates;
+
+    public WoWAuthenticate(
+        ILogger<WoWAuthenticate> logger,
+        IConfiguration configuration,
+        IVisionTemplateResourceManager templateManager,
         AutomationFramework.Cursor cursor,
-        Keyboard keyboard
-    ) 
-    : base(logger)
+        Keyboard keyboard)
+        : base(logger)
     {
-        _visionFactory = visionFactory;
+        _configuration = configuration;
+        _templateManager = templateManager;
         _cursor = cursor;
         _keyboard = keyboard;
-        _config = config;
     }
 
     public override string Name => "wow-authenticate";
-
-    public override string Description => "Authenticate into wow with credentials stored in the appsettings.";
-
-    private readonly Keyboard _keyboard;
-    private readonly AutomationFramework.Cursor _cursor;
-    private readonly IAutomationVisionFactory _visionFactory;
-    private readonly IConfiguration _config;
-    private Vision? _vision = null;
-
-    private Dictionary<string, VisionTemplateLease> _templateLeases = null!;
-
-    public override void Dispose()
-    {
-        // Release templates
-        if (_templateLeases != null)
-        {
-            foreach (var templateLease in _templateLeases.Values)
-            {
-                templateLease?.Dispose();
-            }
-
-            _templateLeases.Clear();
-        }
-        
-        _vision?.Dispose();
-    }
+    public override string Description => "Authenticates into WoW with the password configured in appsettings.";
 
     protected override Task InitializeAsync(CancellationToken cancellationToken)
     {
-        _vision = _visionFactory.Create();
-        
-        _templateLeases = _vision.AcquireTemplateLeases(
+        _vision = new Vision(_templateManager);
+        var templateFileNames = new[]
+        {
             VisionTemplateFileNames.MAIN_MENU_PASSWORD_TEXT,
             VisionTemplateFileNames.MAIN_MENU_BUTTONS,
             VisionTemplateFileNames.CHARACTER_SELECT_CREATE_DELETE_RESTORE_BUTTONS
-        );
+        };
 
+        _templates = _vision.AcquireTemplates(templateFileNames);
 
         return Task.CompletedTask;
     }
 
     protected override async Task RunAsync(CancellationToken cancellationToken)
     {
-        if (_vision == null)
-        {
-            throw new InvalidOperationException("Vision system is not initialized.");
-        }
+        var vision = RequireVision();
+        await EnsureMainMenuButtonsAsync(cancellationToken);
 
-        if (_templateLeases == null)
-        {
-            throw new InvalidOperationException("Template leases are not initialized.");
-        }
-        
-        await ThrowIfMainMenuButtonsNotFoundAsync(cancellationToken);
+        var passwordMatch = vision.Find(GetTemplate(VisionTemplateFileNames.MAIN_MENU_PASSWORD_TEXT), LoginSearch, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to find the password text on the WoW login screen.");
 
-        // find password text
-        var passwordMatch = await _vision.FindImageAsync(_templateLeases[VisionTemplateFileNames.MAIN_MENU_PASSWORD_TEXT].TemplateMat, 0.6);
+        // The input lies directly beneath its label; use the matched template's global coordinates for mouse input.
+        var passwordBox = passwordMatch.GlobalBounds
+            .Translate(0, (int)(passwordMatch.Bounds.Height * 1.5f))
+            .Center();
 
-        if (passwordMatch is null)
-        {
-            throw new InvalidOperationException("Failed to find the password text on the main menu. Cannot proceed with login.");
-        }
+        await _cursor.MoveToAsync(passwordBox, cancellationToken: cancellationToken);
+        await Task.Delay(500, cancellationToken);
+        await _cursor.ClickAsync(cancellationToken: cancellationToken);
 
-        // move cursor to password box and highlight to enter password
-        var passwordBoxPos = passwordMatch.ToGlobalBounds().Translate(0, (int)(passwordMatch.Bounds.Height * 1.5f)).Center();
-
-        await _cursor.MoveToAsync(passwordBoxPos, cancellationToken: cancellationToken);
-        await Task.Delay(500);
-
-        await _cursor.ClickAsync();
-
-        //clear all current text
         await _keyboard.PressChordAsync([VirtualKey.Control, VirtualKey.Backspace], cancellationToken: cancellationToken);
-        await Task.Delay(500);
+        await Task.Delay(500, cancellationToken);
 
-        //get password from config
-        var password = _config.GetRequiredSection("WoWPassword").Get<string>()!;
-        
-        //type in the password
-        await _keyboard.TypeTextAsync(password);
+        var password = _configuration.GetRequiredSection("WoWPassword").Get<string>()
+            ?? throw new InvalidOperationException("WoWPassword must be configured.");
+        await _keyboard.TypeTextAsync(password, cancellationToken: cancellationToken);
+        await _keyboard.PressKeyAsync(VirtualKey.Enter, cancellationToken: cancellationToken);
 
-        //press enter to log-in
-        await _keyboard.PressKeyAsync(VirtualKey.Enter);
-
-        //wait for a bit to let the login process complete
-        await Task.Delay(TimeSpan.FromSeconds(10));
-
-
-        //confirm authentication was successful by checking for the character select menu buttons
-        await ThrowIfCharacterSelectButtonsNotFoundAsync(cancellationToken);
+        await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+        await EnsureCharacterSelectButtonsAsync(cancellationToken);
     }
 
-
-    private async Task ThrowIfMainMenuButtonsNotFoundAsync(CancellationToken cancellationToken, int maxAttempts = 3)
+    public override void Dispose()
     {
-        ArgumentNullException.ThrowIfNull(_vision);
+        if (_templates is not null)
+        {
+            foreach (var lease in _templates.Values) lease.Dispose();
+            _templates.Clear();
+        }
+        _vision?.Dispose();
+    }
 
+    private async Task EnsureMainMenuButtonsAsync(CancellationToken cancellationToken)
+    {
+        await Retry.ExecuteAsync(() =>
+        {
+            var vision = RequireVision();
+
+            var match = vision.Find(GetTemplate(VisionTemplateFileNames.MAIN_MENU_BUTTONS), LoginSearch, cancellationToken);
+            if (match is null)
+            {
+                throw new InvalidOperationException("Failed to find the main menu buttons on the WoW login screen.");
+            }
+
+            return Task.CompletedTask;
+        }, 3, TimeSpan.FromSeconds(5), cancellationToken);
+    }
+
+    private async Task EnsureCharacterSelectButtonsAsync(CancellationToken cancellationToken)
+    {
         await Retry.ExecuteAsync
         (
-            async () =>
+            () =>
             {
-                var match = await _vision.FindImageAsync
-                (
-                    _templateLeases[VisionTemplateFileNames.MAIN_MENU_BUTTONS].TemplateMat,
-                    0.6,
-                    cancellationToken: cancellationToken
-                );
+                var vision = RequireVision();
 
-                if (match == null)
+                var match = vision.Find(GetTemplate(VisionTemplateFileNames.CHARACTER_SELECT_CREATE_DELETE_RESTORE_BUTTONS), LoginSearch, cancellationToken);
+                if (match is null)
                 {
-                    throw new InvalidOperationException("Failed to find the main menu buttons on the WoW login screen.");
+                    throw new InvalidOperationException("Failed to find character-select buttons. Authentication failed.");
                 }
+
+                return Task.CompletedTask;
             },
-            maxAttempts,
+            3,
             TimeSpan.FromSeconds(5),
             cancellationToken
         );
     }
 
+    private Vision RequireVision() => _vision ?? throw new InvalidOperationException("Vision is not initialized.");
 
-    private async Task ThrowIfCharacterSelectButtonsNotFoundAsync(CancellationToken cancellationToken, int maxAttempts = 3)
-    {
-        ArgumentNullException.ThrowIfNull(_vision);
+    private VisionTemplateLease GetTemplate(string name) => _templates?.GetValueOrDefault(name)
+        ?? throw new InvalidOperationException("Template leases are not initialized.");
 
-        await Retry.ExecuteAsync
-        (
-            async () =>
-            {
-                var match = await _vision.FindImageAsync
-                (
-                    _templateLeases[VisionTemplateFileNames.CHARACTER_SELECT_CREATE_DELETE_RESTORE_BUTTONS].TemplateMat,
-                    0.6,
-                    cancellationToken: cancellationToken
-                );
-
-                if (match == null)
-                {
-                    throw new InvalidOperationException("Failed to find the character select buttons on the WoW character selection screen. Authentication failed.");
-                }
-            },
-            maxAttempts,
-            TimeSpan.FromSeconds(5),
-            cancellationToken
-        );
-    }
 }

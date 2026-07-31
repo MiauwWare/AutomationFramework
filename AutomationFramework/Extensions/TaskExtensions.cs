@@ -10,9 +10,20 @@ public static class TaskExtensions
         /// </summary>
         public static async Task<T> RunWithRetry<T>(Func<Task<T>> operation, int maxRetries, TimeSpan retryDelay)
         {
-            if (operation == null) throw new ArgumentNullException(nameof(operation));
-            if (maxRetries < 0) throw new ArgumentOutOfRangeException(nameof(maxRetries), "Max retries must be non-negative.");
-            if (retryDelay < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(retryDelay), "Retry delay must be non-negative.");
+            if (operation == null)
+            {
+                throw new ArgumentNullException(nameof(operation));
+            }
+
+            if (maxRetries < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxRetries), "Max retries must be non-negative.");
+            }
+
+            if (retryDelay < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(retryDelay), "Retry delay must be non-negative.");
+            }
 
             for (int attempt = 0; ; attempt++)
             {
@@ -32,10 +43,25 @@ public static class TaskExtensions
         /// </summary>
         public static async Task<T> RunWithRetry<T>(Func<CancellationToken, Task<T>> operation, Func<T, bool> successCondition, int maxRetries, TimeSpan retryDelay, CancellationToken cancellationToken = default)
         {
-            if (operation == null) throw new ArgumentNullException(nameof(operation));
-            if (successCondition == null) throw new ArgumentNullException(nameof(successCondition));
-            if (maxRetries < 0) throw new ArgumentOutOfRangeException(nameof(maxRetries), "Max retries must be non-negative.");
-            if (retryDelay < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(retryDelay), "Retry delay must be non-negative.");
+            if (operation == null)
+            {
+                throw new ArgumentNullException(nameof(operation));
+            }
+
+            if (successCondition == null)
+            {
+                throw new ArgumentNullException(nameof(successCondition));
+            }
+
+            if (maxRetries < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxRetries), "Max retries must be non-negative.");
+            }
+
+            if (retryDelay < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(retryDelay), "Retry delay must be non-negative.");
+            }
 
             T result = default!;
             for (int attempt = 0; attempt <= maxRetries; attempt++)

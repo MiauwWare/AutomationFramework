@@ -1,6 +1,5 @@
 
 using System.Diagnostics;
-using AutomationFramework;
 using AutomationFramework.Windows;
 using AutomationRunner.Scripting;
 using Microsoft.Extensions.Logging;
